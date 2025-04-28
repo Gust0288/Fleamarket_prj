@@ -1,0 +1,26 @@
+<nav>
+    <a id="logo" href="/">
+        Fleamarkets <br>
+        <p>For You</p>
+        
+    </a>
+
+    <div id="search_container">
+        <input id="input_search" oninput="search()" class="" type="text" placeholder="Search">
+        <div id="search_results" class="hidden">
+        </div>
+    </div>
+
+    <div id="util">
+        {% if session.get('user') %}
+            {% if session.get('is_admin') %}
+                <a href="/admin">Admin</a>
+            {% endif %}
+            <a href="/profile">Profile</a>
+            <a href="/logout">Logout</a>
+        {% else %}
+            <a href="/signup">Signup</a>
+            <a href="/login">Login</a>
+        {% endif %}
+    </div>
+</nav>

@@ -1,0 +1,80 @@
+{% include "_header.html" %}
+{% include "_nav.html" %}
+
+<main id="profile">
+    
+    <div class="profile-info">
+        <h1>Welcome, {{ user.user_name }}</h1>
+        <h2>Your Information</h2>
+        <p><strong>Name:</strong> {{ user.user_name }}</p>
+        <p><strong>Last Name:</strong> {{ user.user_last_name }}</p>
+        <p><strong>Email:</strong> {{ user.user_email }}</p>
+        
+        <a href="/edit-profile" class="edit-btn">Edit Profile</a>
+        <button id="delete-form" mix-delete="/user" onclick="confirmDelete()">
+            Delete account
+        </button>
+    </div>
+
+
+    <form mix-post="/item">
+        <legend>Add your own Fleamarket here:</legend>
+        <input type="text" name="name" placeholder="Name of the Fleamarket">
+        <input type="number" name="price" placeholder="Price">
+        <input type="float" name="lon" placeholder="Longitude">
+        <input type="float" name="lat" placeholder="Laditude">
+        <input name="files" type="file" multiple>
+        <button>
+            Create Fleamarket
+        </button>
+    </form>
+
+    <div class="user-items">
+        <h2>Your Items</h2>
+        <div id="user_items" data-user-pk="{{ user.user_pk }}">
+            <p>Loading your items...</p>
+        </div>
+    </div>
+
+    <!-- <div id="images"></div> -->
+
+    <div id="edit-item-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Edit Item</h2>
+            <form id="edit-item-form" mix-post="/items/edit">
+                <input type="hidden" id="edit-item-pk" name="item_pk">
+                <div class="form-group">
+                    <label for="edit-name">Name:</label>
+                    <input type="text" id="edit-name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-price">Price:</label>
+                    <input type="number" id="edit-price" name="price" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-lon">Longitude:</label>
+                    <input type="float" id="edit-lon" name="lon" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-lat">Latitude:</label>
+                    <input type="float" id="edit-lat" name="lat" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-files">Upload New Images:</label>
+                    <input id="edit-files" name="files" type="file" multiple>
+                    <p class="note">Leave empty to keep current images</p>
+                </div>
+                <div class="form-group">
+                    <label>Current Image:</label>
+                    <img id="edit-current-image" src="" alt="Current item image" style="max-width: 200px; max-height: 200px;">
+                </div>
+                <button type="submit">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+
+</main>
+
+{% include "_footer.html" %}

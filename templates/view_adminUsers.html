@@ -1,0 +1,59 @@
+{% include "_header.html" %}
+{% include "_nav.html" %}
+
+<main id="admin-users">
+    <h1>Manage Users</h1>
+    
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Created</th>
+                <th>Verified</th>
+                <th>Admin</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.user_name }} {{ user.user_last_name }}</td>
+                <td>{{ user.user_email }}</td>
+                <td>{{ user.user_created_at|timestampToDate }}</td>
+                <td>{% if user.user_verified_at > 0 %}Yes{% else %}No{% endif %}</td>
+                <td>{% if user.user_is_admin %}Yes{% else %}No{% endif %}</td>
+                <td>
+                    {% if user.user_deleted_at > 0 %}
+                        <span class="status deleted">Deleted</span>
+                    {% elif user.user_blocked %}
+                        <span class="status blocked">Blocked</span>
+                    {% else %}
+                        <span class="status active">Active</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.user_is_admin == 0 and user.user_deleted_at == 0 %}
+                        {% if user.user_blocked %}
+                            <button class="admin-button success" 
+                                    mix-post="/admin/unblock-user/{{ user.user_pk }}" 
+                                    onclick="return confirm('Are you sure you want to unblock this user? An email notification will be sent.')">
+                                Unblock User
+                            </button>
+                        {% else %}
+                            <button class="admin-button warning" 
+                                    mix-post="/admin/block-user/{{ user.user_pk }}" 
+                                    onclick="return confirm('Are you sure you want to block this user? An email notification will be sent.')">
+                                Block User
+                            </button>
+                        {% endif %}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</main>
+
+{% include "_footer.html" %}

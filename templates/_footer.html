@@ -1,0 +1,50 @@
+<script src="{{ url_for('static', filename='mixhtml.js') }}"></script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="{{ url_for('static', filename='profile.js') }}"></script>
+
+    <script>
+        // Create the map centered on Copenhagen (latitude, longitude)
+        var map = L.map('map').setView([55.6761, 12.5683], 13); // Copenhagen's coordinates
+
+        // Add the OpenStreetMap tile layer to the map
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+
+
+   {% for item in items %} 
+        var customIcon = L.divIcon({
+            className: 'custom-marker-image',
+            html: `<div mix-get="/items/{{ item.item_pk }}" class="custom-marker-container">
+            <img src="{{ url_for('static', filename='uploads/'+ item.item_image) }}" 
+                 class="marker-image"
+                 onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/placeholder.png') }}';">
+            </div>`,
+            iconSize: [50, 50],
+            iconAnchor: [25, 25],
+        });
+
+        var marker = L.marker([{{ item.item_lat }}, {{ item.item_lon }}], { icon: customIcon }).addTo(map);
+        marker.on('click', function() {
+    // Use fetch to get item details and update the right panel
+        fetch(`/items/{{ item.item_pk }}`)
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const itemContent = doc.querySelector('mixhtml[mix-replace="#item"]').innerHTML;
+            document.querySelector('#item').innerHTML = itemContent;
+            // mix_convert(); // Re-initialize mixhtml functionality
+        });
+        });
+    {% endfor %}
+
+        mix_convert()
+    </script>
+
+    
+    
+
+</body>
+</html>

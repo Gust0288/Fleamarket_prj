@@ -1,0 +1,20 @@
+{% include "_header.html" %}
+{% include "_nav.html" %}
+
+<main id="signup">
+
+    <h1>
+        {{ error_message }}
+    </h1>
+
+    <form action="/signup" method="POST">
+        <input class="{{ user_username_error }}" name="user_username" type="text" placeholder="username" value="{{ old_values.get('user_username', '') }}">
+        <input class="{{ user_name_error }}" name="user_name" type="text" placeholder="name" value="{{ old_values.get('user_name', '') }}">
+        <input class="{{ user_last_name_error }}" name="user_last_name" type="text" placeholder="last name" value="{{ old_values.get('user_last_name', '') }}">
+        <input class="{{ user_email_error }}" name="user_email" type="text" placeholder="email" value="{{ old_values.get('user_email', '') }}">
+        <input class="{{ user_password_error }}" name="user_password" type="password" placeholder="password" value="{{ old_values.get('user_password', '') }}"> 
+        <button>Signup</button>
+    </form>
+
+</main>
+{% include "_footer.html" %}

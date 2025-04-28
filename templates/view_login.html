@@ -1,0 +1,22 @@
+{% include "_header.html" %}
+{% include "_nav.html" %}
+
+<main id="login">
+
+    <h1>
+        {{ message }}
+    </h1>
+
+    <form action="/login" method="POST">
+        <input name="user_email" type="text" placeholder="user email" >
+        <input name="user_password" type="text" placeholder="user password">
+        <button class="mt1">
+            Login
+        </button>
+    </form>
+
+    <a href="/forgot-password">Forgot password?</a>
+</main>
+
+
+{% include "_footer.html" %}

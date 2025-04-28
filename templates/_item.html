@@ -1,0 +1,21 @@
+<div id="item" data-pk="{{ item.item_pk }}" data-name="{{ item.item_name }}" data-price="{{ item.item_price }}" data-lon="{{ item.item_lon }}" data-lat="{{ item.item_lat }}" data-image="{{ item.item_image }}">
+    <img src="{{ url_for('static', filename='uploads/'+item.item_image) }}">
+    <p>
+        {{ item.item_name }}
+    </p>    
+    <div>
+        {{ "{:,}".format(item.item_price)  }} USD
+    </div>
+    <div>
+        {{ "{:,.0f}".format(item.item_price * rates.rates.DKK) }} DKK
+    </div>    
+    <a href="/items/{{ item.item_pk }}" target="_blank">
+        Open in window
+    </a>
+    {% if session.get('user') and session.user.user_pk|string == item.item_user_fk|string and is_profile_view|default(false) %}
+    <div class="item-actions">
+        <button class="edit-btn-small" onclick="openEditModal('{{ item.item_pk }}', '{{ item.item_name }}', '{{ item.item_price }}', '{{ item.item_lon }}', '{{ item.item_lat }}', '{{ item.item_image }}')">Edit</button>
+        <button class="delete-btn-small" mix-delete="/items/{{ item.item_pk }}" onclick="return confirm('Are you sure you want to delete this item?')">Delete</button>
+    </div>
+    {% endif %}
+</div>
