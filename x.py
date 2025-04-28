@@ -117,26 +117,41 @@ def validate_item_images():
     
     files = request.files.getlist('files')
     
-    # TODO: Fix the validation for 0 files
-    # if not files == [None]:
-    #     raise Exception("company_ex at least one file")  
-       
     if len(files) > MAX_FILES:
         raise Exception("company_ex max 5 files")
 
+    # Get the application root directory
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    upload_dir = os.path.join(app_dir, "static", "uploads")
+    
+    # Ensure the upload directory exists
+    os.makedirs(upload_dir, exist_ok=True)
+    
     for the_file in files:
+        if not the_file or the_file.filename == '':
+            continue  # Skip empty file inputs
+            
         file_size = len(the_file.read()) # size is in bytes                 
         file_name, file_extension = os.path.splitext(the_file.filename)
         the_file.seek(0)
         file_extension = file_extension.lstrip(".")
+        
         if file_extension not in ALLOWED_EXTENSIONS:
             raise Exception("company_ex file extension not allowed")  
+            
         if file_size > MAX_FILE_SIZE:
             raise Exception("company_ex file too large")  
+            
         new_file_name = f"{uuid.uuid4().hex}.{file_extension}"
         images_names.append(new_file_name)
-        file_path = os.path.join("static/uploads", new_file_name)
-        the_file.save(file_path) 
+        
+        file_path = os.path.join(upload_dir, new_file_name)
+        the_file.save(file_path)
+        
+        ic(f"Saved file to {file_path}")
+        
+    if not images_names:
+        raise Exception("company_ex at least one file")
         
     return images_names
 
@@ -157,8 +172,7 @@ def send_email(user_name, user_last_name, user_verification_key):
         message["To"] = receiver_email
         message["Subject"] = "Welcome"
 
-        # Body of the email
-        # body = f"Thank you {user_name} {user_last_name} for signing up. Welcome."
+        # Body of the email REMEBER TO REPLACE 127.0.0.1 with https://gust0288.eu.pythonanywhere.com
         body = f"""
                 Thank you {user_name} {user_last_name} for signing up. Welcome.
 
@@ -196,13 +210,13 @@ def send_reset_password_email(user_name, user_last_name, reset_token):
         message["To"] = receiver_email
         message["Subject"] = "Password Reset Request"
 
-        # Body of the email
+        # Body of the email REMEBER TO REPLACE 127.0.0.1 with https://gust0288.eu.pythonanywhere.com
         body = f"""
                 Hello {user_name} {user_last_name},
                 
                 You requested to reset your password.
                 
-                To reset your password, please <a href="http://127.0.0.1/reset-password/{reset_token}">click here</a>
+                To reset your password, please <a href="http://127.0.0.1/reset-password/{reset_token}">click here</a> 
                 
                 This link will expire in 24 hours.
                 
