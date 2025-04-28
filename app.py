@@ -27,17 +27,41 @@ def get_rates():
     try:
         data = requests.get("https://api.exchangerate-api.com/v4/latest/usd")
         ic(data.json())
-        with open("rates.txt", "w") as file:
+        rates_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rates.txt")
+        with open(rates_path, "w") as file:
             file.write(data.text)
         return data.json()
     except Exception as ex:
         ic(ex)
+        return {"error": str(ex)}, 500
 #############################
 @app.template_filter('timestampToDate')
 def timestamp_to_date(timestamp):
     if not timestamp:
         return "N/A"
     return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M')
+
+##############################
+def load_rates():
+    """Load currency exchange rates from rates.txt"""
+    try:
+        # Use os.path.join with the application's root directory
+        rates_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rates.txt")
+        with open(rates_path, "r") as file:
+            rates_text = file.read()  # this is text that looks like json
+        ic("Rates loaded successfully")
+        # Convert the text rates to json
+        rates = json.loads(rates_text)
+        return rates
+    except FileNotFoundError:
+        ic("Rates file not found, returning empty rates")
+        return {"rates": {"DKK": 7.0}}  # Default value if file is missing
+    except json.JSONDecodeError as ex:
+        ic(f"Error parsing rates JSON: {ex}")
+        return {"rates": {"DKK": 7.0}}  # Default value if JSON is invalid
+    except Exception as ex:
+        ic(f"Unexpected error loading rates: {ex}")
+        return {"rates": {"DKK": 7.0}}  # Default value for any other error
 
 
 ##############################
@@ -65,7 +89,7 @@ def view_index():
         cursor.execute(q)
         items = cursor.fetchall()
 
-        rates = x.load_rates()
+        rates = load_rates()
 
         return render_template("view_index.html", title="Company", items=items, rates=rates)
     except Exception as ex:
@@ -195,10 +219,7 @@ def get_item_by_pk(item_pk):
         cursor.execute(q, (item_pk,))
         item = cursor.fetchone()
 
-        rates= ""
-        with open("rates.txt", "r") as file:
-            rates = file.read() # this is text that looks like json
-            rates = json.loads(rates)
+        rates = load_rates()
 
         html_item = render_template("_item.html", item=item, rates=rates, is_profile_view=False)
         return f"""
@@ -252,7 +273,7 @@ def get_item_by_user(item_user_fk):
                 </mixhtml>
             """
 
-        rates = x.load_rates()
+        rates = load_rates()
 
         # Generate HTML for all items
         items_html = ""
@@ -298,10 +319,7 @@ def get_items_by_page(page_number):
         items = cursor.fetchall()
         html = ""
         
-        rates= ""
-        with open("rates.txt", "r") as file:
-            rates = file.read() # this is text that looks like json
-            rates = json.loads(rates)
+        rates = load_rates()
 
         for item in items[:items_per_page]:
             i = render_template("_item_mini.html", item=item, rates=rates)
@@ -1124,7 +1142,7 @@ def admin_items():
         cursor.execute(q)
         items = cursor.fetchall()
 
-        rates = x.load_rates()
+        rates = load_rates()
         
         return render_template(
             "view_adminItems.html", 

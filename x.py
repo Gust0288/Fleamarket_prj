@@ -224,25 +224,7 @@ def send_reset_password_email(user_name, user_last_name, reset_token):
     finally:
         pass
 
-##############################
-def load_rates():
-    """Load currency exchange rates from rates.txt"""
-    try:
-        with open("rates.txt", "r") as file:
-            rates_text = file.read()  # this is text that looks like json
-        ic("Rates loaded successfully")
-        # Convert the text rates to json
-        rates = json.loads(rates_text)
-        return rates
-    except FileNotFoundError:
-        ic("Rates file not found, returning empty rates")
-        return {"rates": {"DKK": 7.0}}  # Default value if file is missing
-    except json.JSONDecodeError as ex:
-        ic(f"Error parsing rates JSON: {ex}")
-        return {"rates": {"DKK": 7.0}}  # Default value if JSON is invalid
-    except Exception as ex:
-        ic(f"Unexpected error loading rates: {ex}")
-        return {"rates": {"DKK": 7.0}}  # Default value for any other error
+
 ##############################
 def send_blocked_email(user_name, user_last_name, user_email):
     try:
