@@ -8,6 +8,7 @@ import uuid
 import os
 import json
 import requests
+import languages
 
 app = Flask(__name__)
 
@@ -21,6 +22,17 @@ Session(app)
 
 
 
+##############################
+@app.context_processor
+def utility_processor():
+    """Add utility functions to template context"""
+    lan = get_language()
+    return {
+        'getattr': getattr,
+        'lan': get_language(),  # This will ensure lan is always available
+        'languages': languages,
+        'placeholder_search': getattr(languages, f"{lan}_search", "Search")
+    }
 ##############################
 @app.get("/rates")
 def get_rates():
@@ -41,6 +53,33 @@ def timestamp_to_date(timestamp):
         return "N/A"
     return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M')
 
+##############################
+def get_language():
+    """Get the user's preferred language from session or default to English"""
+    languages_allowed = ["en", "dk"]
+    
+    # Try to get language from session
+    lan = session.get("language", "en")
+    
+    # If invalid language, default to English
+    if lan not in languages_allowed:
+        lan = "en"
+    
+    return lan
+
+# Function to set language in session
+@app.get("/set-language/<lan>")
+def set_language(lan):
+    """Set the user's preferred language"""
+    languages_allowed = ["en", "dk"]
+    if lan not in languages_allowed:
+        lan = "en"
+    
+    session["language"] = lan
+    
+    # Redirect back to the page they came from, or home if not available
+    referrer = request.referrer or url_for("view_index")
+    return redirect(referrer)
 ##############################
 def load_rates():
     """Load currency exchange rates from rates.txt"""
@@ -84,19 +123,34 @@ def disable_cache(response):
 @app.get("/")
 def view_index():
     try:
+        # Get the current language from session
+        lan = get_language()
+        
         db, cursor = x.db()
         q = "SELECT * FROM items WHERE item_blocked = 0 AND item_deleted_at = 0 ORDER BY item_created_at LIMIT 2"
         cursor.execute(q)
         items = cursor.fetchall()
 
         rates = load_rates()
+        
+        # Get language-specific text
+        title = getattr(languages, f"{lan}_home", "Home")
+        placeholder_search = getattr(languages, f"{lan}_search", "Search")
 
-        return render_template("view_index.html", title="Company", items=items, rates=rates)
+        return render_template("view_index.html", 
+                              title=title, 
+                              items=items, 
+                              rates=rates, 
+                              show_adress=True,
+                              lan=lan,
+                              languages=languages,
+                              placeholder_search=placeholder_search)
     except Exception as ex:
         ic(ex)
-        return "ups"
+        return "Error loading homepage", 500
     finally:
-        pass
+        if "cursor" in locals(): cursor.close()
+        if "db" in locals(): db.close()
 
 ##############################
 @app.post("/item")
@@ -214,6 +268,7 @@ def post_item():
 @app.get("/items/<item_pk>")
 def get_item_by_pk(item_pk):
     try:
+        lan = get_language()
         db, cursor = x.db()
         q = "SELECT * FROM items WHERE item_pk = %s AND item_blocked = 0 AND item_deleted_at = 0"
         cursor.execute(q, (item_pk,))
@@ -221,7 +276,9 @@ def get_item_by_pk(item_pk):
 
         rates = load_rates()
 
-        html_item = render_template("_item.html", item=item, rates=rates, is_profile_view=False)
+        show_address = request.args.get('show_address', 'true').lower() == 'true'
+
+        html_item = render_template("_item.html", item=item, rates=rates, is_profile_view=False, lan=lan, languages=languages, show_address=show_address)
         return f"""
             <mixhtml mix-replace="#item">
                 {html_item}
@@ -229,16 +286,21 @@ def get_item_by_pk(item_pk):
         """
     except Exception as ex:
         ic(ex)
+        lan = get_language()
+        
         if "company_ex page number" in str(ex):
-            return """
+            error_message = getattr(languages, f"{lan}_invalid_page", "Page number invalid")
+            return f"""
                 <mixhtml mix-top="body">
-                    page number invalid
+                    {error_message}
                 </mixhtml>
             """
+            
         # worst case, we cannot control exceptions
-        return """
+        error_message = getattr(languages, f"{lan}_general_error", "An error occurred")
+        return f"""
             <mixhtml mix-top="body">
-                ups
+                {error_message}
             </mixhtml>
         """
     finally:
@@ -251,11 +313,13 @@ def get_item_by_user(item_user_fk):
         # First validate that the logged-in user is requesting their own items
         user = x.validate_user_logged()
         
+        lan = get_language()
         # Check if the requested user_fk matches the logged-in user's pk
         if str(user["user_pk"]) != str(item_user_fk):
-            return """
+            error_message = getattr(languages, f"{lan}_no_permission", "You don't have permission to view these items")
+            return f"""
                 <mixhtml mix-top="body">
-                    You don't have permission to view these items
+                    {error_message}
                 </mixhtml>
             """, 403
         
@@ -267,9 +331,10 @@ def get_item_by_user(item_user_fk):
 
         # If no items found for this user
         if not items:
+            no_items_message = getattr(languages, f"{lan}_no_items_yet", "You haven't created any items yet.")
             return f"""
                 <mixhtml mix-replace="#user_items">
-                    <p>You haven't created any items yet.</p>
+                    <p>{no_items_message}</p>
                 </mixhtml>
             """
 
@@ -278,7 +343,7 @@ def get_item_by_user(item_user_fk):
         # Generate HTML for all items
         items_html = ""
         for item in items:
-            items_html += render_template("_item.html", item=item, rates=rates, is_profile_view=True)
+            items_html += render_template("_item.html", item=item, rates=rates, is_profile_view=True, lan=lan, languages=languages, show_address=False)
 
         return f"""
             <mixhtml mix-replace="#user_items">
@@ -287,15 +352,20 @@ def get_item_by_user(item_user_fk):
         """
     except Exception as ex:
         ic(ex)
+        lan = get_language()
+        
         if "compay_ex user not logged" in str(ex):
-            return """
+            login_required_message = getattr(languages, f"{lan}_login_required", "Please log in to view your items")
+            return f"""
                 <mixhtml mix-redirect="/login">
-                    Please log in to view your items
+                    {login_required_message}
                 </mixhtml>
             """
-        return """
+            
+        error_load_message = getattr(languages, f"{lan}_error_loading_items", "Error loading your items")
+        return f"""
             <mixhtml mix-top="body">
-                Error loading your items
+                {error_load_message}
             </mixhtml>
         """
     finally:
@@ -309,6 +379,7 @@ def get_item_by_user(item_user_fk):
 @app.get("/items/page/<page_number>")
 def get_items_by_page(page_number):
     try:
+        lan = get_language()
         page_number = x.validate_page_number(page_number)
         items_per_page = 2
         offset = (page_number-1) * items_per_page
@@ -324,7 +395,7 @@ def get_items_by_page(page_number):
         for item in items[:items_per_page]:
             i = render_template("_item_mini.html", item=item, rates=rates)
             html += i
-        button = render_template("_button_more_items.html", page_number=page_number + 1)
+        button = render_template("_button_more_items.html", page_number=page_number + 1, lan=lan ,languages=languages)
         if len(items) < extra_item: button = ""
         return f"""
             <mixhtml mix-bottom="#items">
@@ -361,7 +432,7 @@ def edit_item():
         # Validate user is logged in
         user = x.validate_user_logged()
 
-
+        lan = get_language()
         
         # Get item data from form
         item_pk = request.form.get("item_pk", "").strip()
@@ -369,17 +440,22 @@ def edit_item():
         price = request.form.get("price", "0").strip()
         lon = request.form.get("lon", "0").strip()
         lat = request.form.get("lat", "0").strip()
+
+         # Basic validation with localized error messages
+        required_fields_message = getattr(languages, f"{lan}_required_fields_missing", "Item ID and name are required")
+        invalid_values_message = getattr(languages, f"{lan}_invalid_price_coords", "Invalid price or coordinates")
+        
         
         # Basic validation
         if not item_pk or not name:
-            return "Item ID and name are required", 400
+            return required_fields_message, 400
         
         try:
             price = int(price)
             lon = float(lon)
             lat = float(lat)
         except ValueError:
-            return "Invalid price or coordinates", 400
+            return invalid_values_message, 400
             
         db, cursor = x.db()
         
@@ -387,6 +463,9 @@ def edit_item():
         q = "SELECT * FROM items WHERE item_pk = %s AND item_user_fk = %s"
         cursor.execute(q, (item_pk, user["user_pk"]))
         item = cursor.fetchone()
+
+        permission_denied_message = getattr(languages, f"{lan}_item_permission_denied", "Item not found or you don't have permission to edit it")
+        
         
         if not item:
             return "Item not found or you don't have permission to edit it", 403
@@ -418,25 +497,35 @@ def edit_item():
                 WHERE item_pk = %s AND item_user_fk = %s"""
         
         cursor.execute(q, (name, price, lon, lat, new_image, item_updated_at, item_pk, user["user_pk"]))
+
+        update_failed_message = getattr(languages, f"{lan}_item_update_failed", "Failed to update item")
+        
         
         if cursor.rowcount != 1:
-            raise Exception("Failed to update item")
+            raise Exception(update_failed_message)
         
         db.commit()
+
+        success_message = getattr(languages, f"{lan}_item_updated", "Item updated successfully!")
+        
         
         return f"""
             <mixhtml mix-redirect="/profile">
-                Item updated successfully!
+                {success_message}
             </mixhtml>
         """
         
     except Exception as ex:
         ic(ex)
+        lan = get_language()
+
         if "company_ex file extension not allowed" in str(ex):
-            return "File extension not allowed", 400
+            extension_error = getattr(languages, f"{lan}_file_extension_invalid", "File extension not allowed")
+            return extension_error, 400
         
         if "company_ex file too large" in str(ex):
-            return "File too large", 400
+            size_error = getattr(languages, f"{lan}_file_too_large", "File too large")
+            return size_error, 400
             
         if "db" in locals():
             db.rollback()
@@ -452,6 +541,8 @@ def delete_item(item_pk):
     try:
         # Validate user is logged in
         user = x.validate_user_logged()
+
+        lan = get_language()
         
         db, cursor = x.db()
         
@@ -459,6 +550,9 @@ def delete_item(item_pk):
         q = "SELECT * FROM items WHERE item_pk = %s AND item_user_fk = %s AND item_deleted_at = 0"
         cursor.execute(q, (item_pk, user["user_pk"]))
         item = cursor.fetchone()
+
+        permission_denied_message = getattr(languages, f"{lan}_item_permission_denied", "Item not found or you don't have permission to delete it")
+        
         
         if not item:
             return "Item not found or you don't have permission to delete it", 403
@@ -467,15 +561,21 @@ def delete_item(item_pk):
         current_time = int(time.time())
         q = "UPDATE items SET item_deleted_at = %s WHERE item_pk = %s AND item_user_fk = %s"
         cursor.execute(q, (current_time, item_pk, user["user_pk"]))
+
+        delete_failed_message = getattr(languages, f"{lan}_item_delete_failed", "Failed to delete item")
+        
         
         if cursor.rowcount != 1:
-            raise Exception("Failed to delete item")
+            raise Exception(delete_failed_message)
         
         db.commit()
+
+        success_message = getattr(languages, f"{lan}_item_deleted", "Item deleted successfully!")
+        
         
         return f"""
             <mixhtml mix-redirect="/profile">
-                Item deleted successfully!
+               {success_message}
             </mixhtml>
         """
         
@@ -510,36 +610,61 @@ def search():
 def ___USER___(): pass
 
 ##############################
-
 @app.get("/signup")
 def show_signup():
     try:
-        active_signup ="active"
+        # Get the current language from session
+        lan = get_language()
+        
+        # Define language-specific placeholders
+        placeholders = {
+            "username": getattr(languages, f"{lan}_user_username", "username"),
+            "name": getattr(languages, f"{lan}_user_name", "name"),
+            "last_name": getattr(languages, f"{lan}_user_last_name", "last name"),
+            "email": getattr(languages, f"{lan}_user_email", "email"),
+            "password": getattr(languages, f"{lan}_user_password", "password"),
+            "button": getattr(languages, f"{lan}_signup_button", "Sign Up"),
+        }
+
+        active_signup = "active"
         error_message = request.args.get("error_message", "")
         return render_template("view_signup.html", 
-                           title="Signup", 
-                           active_signup=active_signup, 
-                           error_message=error_message,
-                           old_values={})
+                          title="Signup", 
+                          active_signup=active_signup, 
+                          error_message=error_message,
+                          old_values={},
+                          languages=languages,
+                          lan=lan,
+                          placeholders=placeholders)
     except Exception as ex:
-        ic(ex) 
+        ic(ex)
+        return redirect(url_for("view_index"))
 
 ##############################
 @app.post("/signup")
 def signup():
     try:
+        # Get the current language from session
+        lan = get_language()
+        
+        # Get translations for error messages
+        username_invalid = getattr(languages, f"{lan}_user_username_invalid", "Invalid username")
+        name_invalid = getattr(languages, f"{lan}_user_name_invalid", "Invalid name")
+        last_name_invalid = getattr(languages, f"{lan}_user_last_name_invalid", "Invalid last name")
+        email_invalid = getattr(languages, f"{lan}_user_email_invalid", "Invalid email")
+        password_invalid = getattr(languages, f"{lan}_user_password_invalid", "Invalid password")
+        email_exists = getattr(languages, f"{lan}_user_email_exists", "Email already exists")
+        username_exists = getattr(languages, f"{lan}_user_username_exists", "Username already exists")
+        system_error = getattr(languages, f"{lan}_system_error", "System under maintenance")
+        
         user_username = x.validate_user_username()
         user_name = x.validate_user_name()
         user_last_name = x.validate_user_last_name()
         user_email = x.validate_user_email()
         user_password = x.validate_user_password()
         hashed_password = generate_password_hash(user_password)
-
-        #TO DO
-        #user_verified_at = int(time.time());
-    
+        
         user_verification_key = str(uuid.uuid4())
-
         user_created_at = int(time.time())
 
         db, cursor = x.db()
@@ -554,15 +679,16 @@ def signup():
         user_is_admin, user_blocked) 
         VALUES (NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 
-        db, cursor = x.db()
-        cursor.execute(q, (user_username, user_name, user_last_name, user_email, hashed_password, 
-                  user_verification_key, user_created_at, 0, 0, 0, 0))
+        cursor.execute(q, (user_username, user_name, user_last_name, user_email, hashed_password, user_verification_key, user_created_at, 0, 0, 0, 0))
 
         if cursor.rowcount != 1: raise Exception("System under maintenance")
 
         db.commit()
         x.send_email(user_name, user_last_name, user_verification_key)
-        return redirect(url_for("show_login", message="Signup ok"))
+        
+        # Success message in selected language
+        success_msg = getattr(languages, f"{lan}_user_success", "User successfully created")
+        return redirect(url_for("show_login", message=success_msg))
     except Exception as ex:
         ic(ex)
         if "db" in locals(): db.rollback()
@@ -570,40 +696,89 @@ def signup():
         old_values = request.form.to_dict()
         error_message = str(ex)
         
-        # Fix the exception handling for user validation
+        # Get the current language from session
+        lan = get_language()
+        
+        # Define placeholders for form fields
+        placeholders = {
+            "username": getattr(languages, f"{lan}_user_username", "username"),
+            "name": getattr(languages, f"{lan}_user_name", "name"),
+            "last_name": getattr(languages, f"{lan}_user_last_name", "last name"),
+            "email": getattr(languages, f"{lan}_user_email", "email"),
+            "password": getattr(languages, f"{lan}_user_password", "password"),
+            "button": getattr(languages, f"{lan}_signup_button", "Sign Up"),
+        }
+        
+        # Handle specific validation errors
         if "company_ex user_username" in error_message:
             old_values.pop("user_username", None)
             return render_template("view_signup.html",                                   
-                error_message="Invalid username", old_values=old_values, user_username_error="input_error")
-        if "company_ex user_name" in error_message:
+                error_message=username_invalid, 
+                old_values=old_values, 
+                user_username_error="input_error", 
+                lan=lan, 
+                placeholders=placeholders,
+                languages=languages)
+        
+        elif "company_ex user_name" in error_message:
             old_values.pop("user_name", None)
             return render_template("view_signup.html",
-                error_message="Invalid name", old_values=old_values, user_name_error="input_error")
-        if "company_ex user_last_name" in error_message or "last name" in error_message:
+                error_message=name_invalid, 
+                old_values=old_values, 
+                user_name_error="input_error", 
+                lan=lan, 
+                placeholders=placeholders,
+                languages=languages)
+        
+        elif "company_ex user_last_name" in error_message or "last name" in error_message:
             old_values.pop("user_last_name", None)
             return render_template("view_signup.html",
-                error_message="Invalid last name", old_values=old_values, user_last_name_error="input_error")
-        if "company_ex email" in error_message:
+                error_message=last_name_invalid, 
+                old_values=old_values, 
+                user_last_name_error="input_error", 
+                lan=lan, 
+                placeholders=placeholders,
+                languages=languages)
+        
+        elif "company_ex email" in error_message:
             old_values.pop("user_email", None)
             return render_template("view_signup.html",
-                error_message="Invalid email", old_values=old_values, user_email_error="input_error")
-        if "company_ex user_password" in error_message or "password" in error_message:
+                error_message=email_invalid, 
+                old_values=old_values, 
+                user_email_error="input_error", 
+                lan=lan, 
+                placeholders=placeholders,
+                languages=languages)
+        
+        elif "company_ex duplicate_email" in error_message:
+            old_values.pop("user_email", None)
+            return render_template("view_signup.html",
+                error_message=email_exists, 
+                old_values=old_values, 
+                user_email_error="input_error", 
+                lan=lan, 
+                placeholders=placeholders,
+                languages=languages)
+            
+        elif "password" in error_message:
             old_values.pop("user_password", None)
             return render_template("view_signup.html",
-                error_message="Invalid password", old_values=old_values, user_password_error="input_error")
-        #duplicate
-        if "company_ex duplicate_email" in error_message:
-            old_values.pop("user_email", None)
+                error_message=password_invalid, 
+                old_values=old_values, 
+                user_password_error="input_error", 
+                lan=lan, 
+                placeholders=placeholders,
+                languages=languages)
+        
+        else:
+            # Generic error handler
             return render_template("view_signup.html",
-                error_message="Email already exists", old_values=old_values, user_email_error="input_error")
-        if "user_username" in error_message: 
-            return render_template("view_signup.html", 
-                error_message="Username already exists", old_values=old_values, user_username_error="input_error")
+                error_message=system_error, 
+                old_values=old_values, 
+                lan=lan, 
+                placeholders=placeholders,
+                languages=languages)
                 
-        # Default case - handle any other exceptions
-        return render_template("view_signup.html",
-            error_message=f"An error occurred: {error_message}", 
-            old_values=old_values)
     finally:
         if "cursor" in locals(): cursor.close()
         if "db" in locals(): db.close()
@@ -611,48 +786,81 @@ def signup():
 ##############################
 @app.get("/login")
 def show_login():
-    active_login = "active"
-    message = request.args.get("message", "")
-    return render_template("view_login.html", title="Login", active_login=active_login, message=message)
+    try:
+        # Get the current language from session
+        lan = get_language()
+        
+        # Define language-specific placeholders
+        placeholders = {
+            "email": getattr(languages, f"{lan}_user_email", "email"),
+            "password": getattr(languages, f"{lan}_user_password", "password"),
+            "button": getattr(languages, f"{lan}_login_button", "Log In"),
+            "forgot_password": getattr(languages, f"{lan}_forgot_password", "Forgot password?")
+        }
+        
+        active_login = "active"
+        message = request.args.get("message", "")
+        
+        # Get title in the current language
+        title = getattr(languages, f"{lan}_login_button", "Login")
+        
+        return render_template("view_login.html", 
+                              title=title, 
+                              active_login=active_login, 
+                              message=message, 
+                              lan=lan, 
+                              languages=languages,
+                              placeholders=placeholders)
+    except Exception as ex:
+        ic(ex)
+        return redirect(url_for("view_index"))
 ##############################
 @app.post("/login")
 def login():
     try:
+        # Get the current language from session
+        lan = get_language()
+        
+        # Get translations for error messages
+        invalid_credentials = getattr(languages, f"{lan}_login_invalid_credentials", "Invalid email or password")
+        account_not_verified = getattr(languages, f"{lan}_login_account_not_verified", "Please verify your email before logging in")
+        account_blocked = getattr(languages, f"{lan}_login_account_blocked", "Your account has been blocked. Please contact support")
+        login_failed = getattr(languages, f"{lan}_login_failed", "Login failed")
+        
         user_email = x.validate_user_email()
         user_password = x.validate_user_password()
 
-        db,cursor = x.db()
+        db, cursor = x.db()
         q = "SELECT * FROM users WHERE user_email = %s AND user_deleted_at = 0"
         cursor.execute(q, (user_email,))
         user = cursor.fetchone()
 
         if not user:
-            raise Exception("Wrong email or password")
+            raise Exception(invalid_credentials)
 
         if not check_password_hash(user["user_password"], user_password):
-            raise Exception("Invalid credentials")
+            raise Exception(invalid_credentials)
         
         if user["user_verified_at"] == 0:
-            raise Exception("Please Verify your email before loggin in!")
+            raise Exception(account_not_verified)
         
         if user.get("user_blocked", 0) == 1:
-            raise Exception("Your account has been blocked. Please contact support.")
+            raise Exception(account_blocked)
         
-
-        # user.pop("user_password") Use this or remove the users password from the session
-        # ic(user) 
-
         session["user"] = user
         session["is_admin"] = bool(user.get("user_is_admin", 0))
 
         return redirect(url_for("profile"))
     except Exception as ex:
         ic(ex)
-
-        if "Invalid credentials" in str(ex):
-            return redirect(url_for("show_login", message="Invalid email or password"))
         
-        return redirect(url_for("show_login", message=f"Login failed: {str(ex)}"))
+        # Check if the exception is one of our known errors
+        if str(ex) in [invalid_credentials, account_not_verified, account_blocked]:
+            return redirect(url_for("show_login", message=str(ex)))
+        
+        # For unknown errors
+        error_message = getattr(languages, f"{lan}_login_failed", "Login failed")
+        return redirect(url_for("show_login", message=f"{error_message}: {str(ex)}"))
     finally:
         if "cursor" in locals(): cursor.close()
         if "db" in locals(): db.close()
@@ -705,26 +913,36 @@ def logout():
 @app.get("/profile")
 def profile():
     try:
+        lan = get_language()
+
+        
         is_session = False
         if session["user"]: is_session = True  
         active_profile = "active"      
-        return render_template("view_profile.html", title="Profile", user=session["user"], is_session=is_session, active_profile=active_profile)
-    
 
-        # user_name = session["user"]["user_name"]
-        # user_last_name = session["user"]["user_last_name"]
-        # return render_template("profile.html", title="Profile", user_name=user_name, user_last_name=user_last_name)
+
+        title = getattr(languages, f"{lan}_profile_title", "Profile")
+        error_default = getattr(languages, f"{lan}_error_occurred", "An error occurred")
+        
+
+        return render_template("view_profile.html", title="Profile", user=session["user"], is_session=is_session, active_profile=active_profile,
+                               lan=lan,
+                               languages=languages,
+                               error_default=error_default,
+                               show_address=False)
+    
     except Exception as ex:
         ic(ex)
         return redirect(url_for("show_login"))
-    finally:
-        pass
 ##############################
 ##############################
 @app.get("/edit-profile")
 def show_edit_profile():
     try:
+        lan = get_language()
         
+        title = getattr(languages, f"{lan}_edit_profile", "Edit Profile")
+
         if not session.get("user"):
             return redirect(url_for("show_login"))
             
@@ -733,7 +951,9 @@ def show_edit_profile():
             title="Edit Profile", 
             user=session["user"],
             error_message="",
-            old_values = {}
+            old_values = {},
+            lan=lan,
+            languages=languages
         )
     except Exception as ex:
         ic(ex)
@@ -743,12 +963,21 @@ def show_edit_profile():
 @app.post("/edit-profile")
 def edit_profile():
     try:
-       
+        lan = get_language()
+
         if not session.get("user"):
             return redirect(url_for("show_login"))
             
         user_pk = session["user"]["user_pk"]
-        
+
+    
+        name_invalid = getattr(languages, f"{lan}_user_name_invalid", "Invalid name")
+        last_name_invalid = getattr(languages, f"{lan}_user_last_name_invalid", "Invalid last name")
+        email_invalid = getattr(languages, f"{lan}_user_email_invalid", "Invalid email")
+        email_exists = getattr(languages, f"{lan}_user_email_exists", "Email already in use by another account")
+        update_failed = getattr(languages, f"{lan}_profile_update_failed", "Failed to update profile")
+        update_success = getattr(languages, f"{lan}_profile_update_success", "Profile updated successfully")
+       
        
         user_name = x.validate_user_name()
         user_last_name = x.validate_user_last_name()
@@ -794,36 +1023,56 @@ def edit_profile():
         
         old_values = request.form.to_dict()
         error_message = str(ex)
+
+        title = getattr(languages, f"{lan}_edit_profile", "Edit Profile")
         
-        if "user_name" in str(ex):
+        if "company_ex user_name" in str(ex):
             return render_template("view_edit_profile.html", 
-                title="Edit Profile",
-                error_message="Invalid name format",
+                title=title,
+                error_message=name_invalid,
                 user=session["user"],
                 old_values=old_values,
-                user_name_error="input_error")
+                user_name_error="input_error",
+                lan=lan,
+                languages=languages)
                 
-        if "last name" in str(ex):
+        if "company_ex user_last_name" in str(ex) or "last name" in str(ex):
             return render_template("view_edit_profile.html", 
-                title="Edit Profile",
-                error_message="Invalid last name format",
+                title=title,
+                error_message=last_name_invalid,
                 user=session["user"],
                 old_values=old_values,
-                user_last_name_error="input_error")
+                user_last_name_error="input_error",
+                lan=lan,
+                languages=languages)
                 
-        if "email" in str(ex):
+        if "company_ex user_email" in str(ex):
             return render_template("view_edit_profile.html", 
-                title="Edit Profile",
-                error_message="Invalid email format",
+                title=title,
+                error_message=email_invalid,
                 user=session["user"],
                 old_values=old_values,
-                user_email_error="input_error")
+                user_email_error="input_error",
+                lan=lan,
+                languages=languages)
+        
+        if "company_ex duplicate_email" in str(ex):
+            return render_template("view_edit_profile.html", 
+                title=title,
+                error_message=email_exists,
+                user=session["user"],
+                old_values=old_values,
+                user_email_error="input_error",
+                lan=lan,
+                languages=languages)
         
         return render_template("view_edit_profile.html", 
-            title="Edit Profile",
+            title=title,
             error_message=error_message,
             user=session["user"],
-            old_values=old_values)
+            old_values=old_values,
+            lan=lan,
+            languages=languages)
             
     finally:
         if "cursor" in locals(): cursor.close()
@@ -832,8 +1081,13 @@ def edit_profile():
 @app.get("/forgot-password")
 def show_forgot_password():
     try:
+        lan = get_language()
+
         message = request.args.get("message", "")
-        return render_template("view_forgot_password.html", title="Forgot Password", message=message)
+        title = getattr(languages, f"{lan}_forgot_password", "Forgot Password")
+        
+
+        return render_template("view_forgot_password.html", title="Forgot Password", message=message, lan=lan, languages=languages)
     except Exception as ex:
         ic(ex)
         return redirect(url_for("view_index"))
@@ -841,6 +1095,7 @@ def show_forgot_password():
 @app.post("/forgot-password")
 def forgot_password():
     try:
+        lan = get_language()
         user_email = x.validate_user_email()
         
         db, cursor = x.db()
@@ -848,8 +1103,10 @@ def forgot_password():
         cursor.execute(q, (user_email,))
         user = cursor.fetchone()
         
+        success_message = getattr(languages, f"{lan}_password_reset_email_sent", "If your email is registered, you will receive a password reset link.")
+        
         if not user:
-            return redirect(url_for("show_forgot_password", message="If your email is registered, you will receive a password reset link."))
+            return redirect(url_for("show_forgot_password", message=success_message))
         
         # Generate a reset token
         reset_token = str(uuid.uuid4())
@@ -862,19 +1119,21 @@ def forgot_password():
         cursor.execute(q, (reset_token, expiry_time, user["user_pk"]))
         
         if cursor.rowcount != 1:
-            raise Exception("System under maintenance")
+            system_error = getattr(languages, f"{lan}_system_error", "System under maintenance")
+            raise Exception(system_error)
         
         db.commit()
         
         # Send an email with the reset link
         x.send_reset_password_email(user["user_name"], user["user_last_name"], reset_token)
         
-        return redirect(url_for("show_forgot_password", message="If your email is registered, you will receive a password reset link."))
+        return redirect(url_for("show_forgot_password", message=success_message))
         
     except Exception as ex:
         ic(ex)
         if "db" in locals(): db.rollback()
-        return redirect(url_for("show_forgot_password", message=f"An error occurred: {str(ex)}"))
+        error_message = getattr(languages, "en_error_occurred", "An error occurred")
+        return redirect(url_for("show_forgot_password", message=f"{error_message}: {str(ex)}"))
     finally:
         if "cursor" in locals(): cursor.close()
         if "db" in locals(): db.close()
@@ -883,6 +1142,8 @@ def forgot_password():
 @app.get("/reset-password/<reset_token>")
 def show_reset_password(reset_token):
     try:
+        lan = get_language()
+
         db, cursor = x.db()
         current_time = int(time.time())
         
@@ -891,13 +1152,16 @@ def show_reset_password(reset_token):
         user = cursor.fetchone()
         
         if not user:
-            return "Invalid or expired reset token", 400
+            invalid_token_message = getattr(languages, f"{lan}_password_reset_invalid_token", "Invalid or expired reset token")
+            return invalid_token_message, 400
         
-        return render_template("view_reset_password.html", title="Reset Password", reset_token=reset_token)
+        return render_template("view_reset_password.html", title="Reset Password", reset_token=reset_token, lan=lan, languages=languages)
         
     except Exception as ex:
         ic(ex)
-        return f"Error: {str(ex)}", 400
+        lan = get_language()
+        error_message = getattr(languages, f"{lan}_error_occurred", "An error occurred")
+        return f"{error_message}: {str(ex)}", 400
     finally:
         if "cursor" in locals(): cursor.close()
         if "db" in locals(): db.close()
@@ -906,6 +1170,8 @@ def show_reset_password(reset_token):
 @app.post("/reset-password/<reset_token>")
 def reset_password(reset_token):
     try:
+        lan = get_language()
+
         user_password = x.validate_user_password()
         
         db, cursor = x.db()
@@ -917,7 +1183,8 @@ def reset_password(reset_token):
         user = cursor.fetchone()
         
         if not user:
-            return "Invalid or expired reset token", 400
+            invalid_token_message = getattr(languages, f"{lan}_password_reset_invalid_token", "Invalid or expired reset token")
+            return invalid_token_message, 400
         
         # Update the password
         hashed_password = generate_password_hash(user_password)
@@ -927,16 +1194,21 @@ def reset_password(reset_token):
         cursor.execute(q, (hashed_password, user["user_pk"]))
         
         if cursor.rowcount != 1:
-            raise Exception("System under maintenance")
+            system_error = getattr(languages, f"{lan}_system_error", "System under maintenance")
+            raise Exception(system_error)
         
         db.commit()
         
-        return redirect(url_for("show_login", message="Password reset successful. You can now login with your new password."))
+        success_message = getattr(languages, f"{lan}_password_reset_success", "Password reset successful. You can now login with your new password.")
+        
+        return redirect(url_for("show_login", message=success_message))
         
     except Exception as ex:
         ic(ex)
         if "db" in locals(): db.rollback()
-        return f"Error: {str(ex)}", 400
+        lan = get_language()
+        error_message = getattr(languages, f"{lan}_error_occurred", "An error occurred")
+        return f"{error_message}: {str(ex)}", 400
     finally:
         if "cursor" in locals(): cursor.close()
         if "db" in locals(): db.close()
@@ -945,14 +1217,45 @@ def reset_password(reset_token):
 @app.delete("/user")
 def delete_user():
     try:
+        lan = get_language()
+        
+        # Get translations for messages
+        not_logged_in = getattr(languages, f"{lan}_user_not_logged_in", "User not logged in")
+        password_required = getattr(languages, f"{lan}_delete_required_password", "Password is required to confirm deletion")
+        incorrect_password = getattr(languages, f"{lan}_delete_incorrect_password", "Incorrect password")
+        delete_success = getattr(languages, f"{lan}_delete_success", "Account deleted successfully") 
+        email_sent = getattr(languages, f"{lan}_confirmation_email_sent", "A confirmation email has been sent")
+        
         # Make sure user is logged in
         if not session.get("user"):
-            return "User not logged in", 401
+            return not_logged_in, 401
         
         user_pk = session["user"]["user_pk"]
+        user_password = request.form.get("password", "")
+        
+        if not user_password:
+            return f"""
+                <div id="error-message">{password_required}</div>
+            """
         
         # Connect to database
         db, cursor = x.db()
+        
+        # First verify the password
+        q = "SELECT * FROM users WHERE user_pk = %s"
+        cursor.execute(q, (user_pk,))
+        user = cursor.fetchone()
+        
+        # Check if password matches
+        if not check_password_hash(user["user_password"], user_password):
+            return f"""
+                <div id="error-message">{incorrect_password}</div>
+            """
+        
+        # Store user info before deleting for email confirmation
+        user_name = user["user_name"]
+        user_email = user["user_email"]
+        user_last_name = user["user_last_name"]
         
         # Soft delete the user (update user_deleted_at timestamp)
         current_time = int(time.time())
@@ -963,29 +1266,37 @@ def delete_user():
             raise Exception("company_ex cannot delete user")
         
         db.commit()
+        
+        # Send confirmation email
+        try:
+            x.send_account_deletion_email(user_name, user_last_name, user_email)
+        except Exception as email_ex:
+            ic(f"Failed to send account deletion confirmation email: {email_ex}")
+        
         session.pop("user")
         
-
-        return """
-            <mixhtml mix-redirect="/login">
-                Account deleted successfully
+        # Change this to make it clearer for the JS detection
+        return f"""
+            <mixhtml mix-redirect="/login?message={delete_success}">
+                <div id="success-message">Account deleted successfully</div>
             </mixhtml>
         """
         
     except Exception as ex:
         ic(ex)     
-        db.rollback()  
-        session.pop("user") 
+        if "db" in locals(): db.rollback()  
+        
+        lan = get_language() if 'lan' not in locals() else lan
+        
         if "company_ex cannot delete user" in str(ex):
-            return """
-                <mixhtml mix-redirect="/login">
-                </mixhtml>
+            delete_unable = getattr(languages, f"{lan}_delete_unable", "Unable to delete your account")
+            return f"""
+                <div id="error-message">{delete_unable}</div>
             """        
         # worst case, we cannot control exceptions
-        return """
-            <mixhtml mix-top="body">
-                ups
-            </mixhtml>
+        delete_error = getattr(languages, f"{lan}_delete_error", "An error occurred. Please try again later")
+        return f"""
+                <div id="error-message">{delete_error}</div>
         """
     finally:
         if "cursor" in locals(): cursor.close()
@@ -998,10 +1309,14 @@ def ___ADMIN___(): pass
 @x.admin_required
 def admin_dashboard():
     try:
+        lan = get_language()
+        title = getattr(languages, f"{lan}_admin_dashboard", "Admin Dashboard")
         return render_template(
             "view_adminDashboard.html", 
-            title="Admin Dashboard", 
-            user=session["user"]
+            title=title, 
+            user=session["user"],
+            lan=lan,
+            languages=languages
         )
     except Exception as ex:
         ic(ex)
@@ -1011,6 +1326,9 @@ def admin_dashboard():
 @x.admin_required
 def admin_users():
     try:
+        lan = get_language()
+        title = getattr(languages, f"{lan}_admin_manage_users", "Manage Users")
+        
         db, cursor = x.db()
         q = """SELECT user_pk, user_name, user_last_name, user_email, 
                user_created_at, user_verified_at, user_is_admin, user_deleted_at, user_blocked 
@@ -1022,7 +1340,8 @@ def admin_users():
             "view_adminUsers.html", 
             title="Manage Users", 
             users=users, 
-            user=session["user"]
+            user=session["user"],lan=lan,
+            languages=languages
         )
     except Exception as ex:
         ic(ex)
@@ -1036,7 +1355,7 @@ def admin_users():
 @x.admin_required
 def block_user(user_pk):
     try:
-        
+        lan = get_language()
         db, cursor = x.db()
         
 
@@ -1045,11 +1364,11 @@ def block_user(user_pk):
         user = cursor.fetchone()
         
         if not user:
-            raise Exception("User not found or already deleted")
-        
+            raise Exception(getattr(languages, f"{lan}_user_not_found", "User not found or already deleted"))
         
         if user.get("user_is_admin", 0):
-            raise Exception("Cannot block admin users")
+            raise Exception(getattr(languages, f"{lan}_cannot_block_admin", "Cannot block admin users"))
+        
         
 
         q = "UPDATE users SET user_blocked = 1 WHERE user_pk = %s"
@@ -1070,9 +1389,10 @@ def block_user(user_pk):
             ic(f"Failed to send block notification email: {email_ex}")
         
         
-        return """
+        success_message = getattr(languages, f"{lan}_admin_user_blocked", "User blocked successfully")
+        return f"""
             <mixhtml mix-redirect="/admin/users">
-                User blocked successfully and notification email sent.
+                {success_message} and notification email sent.
             </mixhtml>
         """
         
@@ -1089,7 +1409,7 @@ def block_user(user_pk):
 @x.admin_required
 def unblock_user(user_pk):
     try:
-        
+        lan = get_language()
         db, cursor = x.db()
         
         
@@ -1098,14 +1418,14 @@ def unblock_user(user_pk):
         user = cursor.fetchone()
         
         if not user:
-            raise Exception("User not found or already deleted")
+            raise Exception(getattr(languages, f"{lan}_user_not_found", "User not found or already deleted"))
         
         
         q = "UPDATE users SET user_blocked = 0 WHERE user_pk = %s"
         cursor.execute(q, (user_pk,))
         
         if cursor.rowcount != 1:
-            raise Exception("Failed to unblock user")
+            raise Exception(getattr(languages, f"{lan}_unblock_user_failed", "Failed to unblock user"))
         
         db.commit()
         
@@ -1119,9 +1439,10 @@ def unblock_user(user_pk):
         except Exception as email_ex:
             ic(f"Failed to send unblock notification email: {email_ex}")
         
-        return """
+        success_message = getattr(languages, f"{lan}_admin_user_unblocked", "User unblocked successfully")
+        return f"""
             <mixhtml mix-redirect="/admin/users">
-                User unblocked successfully and notification email sent.
+                {success_message} and notification email sent.
             </mixhtml>
         """
         
@@ -1137,6 +1458,10 @@ def unblock_user(user_pk):
 @x.admin_required
 def admin_items():
     try:
+        lan = get_language()
+        title = getattr(languages, f"{lan}_admin_manage_items", "Manage Items")
+
+
         db, cursor = x.db()
         q = "SELECT * FROM items ORDER BY item_created_at DESC"
         cursor.execute(q)
@@ -1149,7 +1474,9 @@ def admin_items():
             title="Manage Items", 
             items=items, 
             user=session["user"],
-            rates = rates
+            rates = rates,
+            lan=lan,
+            languages=languages
         )
     except Exception as ex:
         ic(ex)
@@ -1162,6 +1489,7 @@ def admin_items():
 @x.admin_required
 def block_item(item_pk):
     try:
+        lan = get_language()
         db, cursor = x.db()
         
         # Check if the item exists
@@ -1170,7 +1498,7 @@ def block_item(item_pk):
         item = cursor.fetchone()
         
         if not item:
-            raise Exception("Item not found")
+            raise Exception(getattr(languages, f"{lan}_item_not_found", "Item not found"))
             
         # Get the item owner's information - use item_user_fk (the correct column name)
         if item["item_user_fk"]:  # Check if the user FK exists and is not empty
@@ -1186,7 +1514,7 @@ def block_item(item_pk):
         cursor.execute(q, (item_pk,))
         
         if cursor.rowcount != 1:
-            raise Exception("Failed to block item")
+            raise Exception(getattr(languages, f"{lan}_block_item_failed", "Failed to block item"))
         
         db.commit()
         
@@ -1199,12 +1527,15 @@ def block_item(item_pk):
                     user["user_email"],
                     item["item_name"]
                 )
-                msg = "Item blocked successfully and notification email sent to owner."
+                success_message = getattr(languages, f"{lan}_admin_item_blocked_email_sent", "Item blocked successfully and notification email sent to owner.")
+                msg = success_message
             except Exception as email_ex:
                 ic(f"Failed to send item block notification email: {email_ex}")
-                msg = "Item blocked successfully but failed to send notification email."
+                fail_message = getattr(languages, f"{lan}_admin_item_blocked_email_fail", "Item blocked successfully but failed to send notification email.")
+                msg = fail_message
         else:
-            msg = "Item blocked successfully. No owner found to notify."
+            no_owner_message = getattr(languages, f"{lan}_admin_item_blocked_no_owner", "Item blocked successfully. No owner found to notify.")
+            msg = no_owner_message
         
         return f"""
             <mixhtml mix-redirect="/admin/items">
@@ -1225,6 +1556,7 @@ def block_item(item_pk):
 @x.admin_required
 def unblock_item(item_pk):
     try:
+        lan = get_language()
         db, cursor = x.db()
         
         # Check if the item exists
@@ -1233,7 +1565,7 @@ def unblock_item(item_pk):
         item = cursor.fetchone()
         
         if not item:
-            raise Exception("Item not found")
+            raise Exception(getattr(languages, f"{lan}_item_not_found", "Item not found"))
             
         # Get the item owner's information - use item_user_fk (the correct column name)
         if item["item_user_fk"]:  # Check if the user FK exists and is not empty
@@ -1249,11 +1581,12 @@ def unblock_item(item_pk):
         cursor.execute(q, (item_pk,))
         
         if cursor.rowcount != 1:
-            raise Exception("Failed to unblock item")
+            raise Exception(getattr(languages, f"{lan}_unblock_item_failed", "Failed to unblock item"))
         
         db.commit()
         
-        # Send notification email if we have a valid user
+        
+        # Send notification email if have a valid user
         if user:
             try:
                 x.send_item_unblocked_email(
@@ -1262,12 +1595,15 @@ def unblock_item(item_pk):
                     user["user_email"],
                     item["item_name"]
                 )
-                msg = "Item unblocked successfully and notification email sent to owner."
+                success_message = getattr(languages, f"{lan}_admin_item_unblocked_email_sent", "Item unblocked successfully and notification email sent to owner.")
+                msg = success_message
             except Exception as email_ex:
                 ic(f"Failed to send item unblock notification email: {email_ex}")
-                msg = "Item unblocked successfully but failed to send notification email."
+                fail_message = getattr(languages, f"{lan}_admin_item_unblocked_email_fail", "Item unblocked successfully but failed to send notification email.")
+                msg = fail_message
         else:
-            msg = "Item unblocked successfully. No owner found to notify."
+            no_owner_message = getattr(languages, f"{lan}_admin_item_unblocked_no_owner", "Item unblocked successfully. No owner found to notify.")
+            msg = no_owner_message
         
         return f"""
             <mixhtml mix-redirect="/admin/items">

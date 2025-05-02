@@ -2,25 +2,37 @@
     <a id="logo" href="/">
         Fleamarkets <br>
         <p>For You</p>
-        
     </a>
+    
 
     <div id="search_container">
-        <input id="input_search" oninput="search()" class="" type="text" placeholder="Search">
+        <input id="input_search" oninput="search()" class="" type="text" placeholder="{{ getattr(languages, lan+'_search', 'Search') }}">
         <div id="search_results" class="hidden">
         </div>
     </div>
 
     <div id="util">
+         <div class="language-switcher">
+            <select id="language-select" onchange="changeLanguage(this.value)">
+                <option value="en" {% if lan == 'en' %}selected{% endif %}>🇬🇧 English</option>
+                <option value="dk" {% if lan == 'dk' %}selected{% endif %}>🇩🇰 Dansk</option>
+            </select>
+        </div>
         {% if session.get('user') %}
             {% if session.get('is_admin') %}
-                <a href="/admin">Admin</a>
+                <a href="/admin">{{ getattr(languages, lan+'_admin_dashboard', 'Admin') }}</a>
             {% endif %}
-            <a href="/profile">Profile</a>
-            <a href="/logout">Logout</a>
+            <a href="/profile">{{ getattr(languages, lan+'_profile_title', 'Profile') }}</a>
+            <a href="/logout">{{ getattr(languages, lan+'_logout', 'Logout') }}</a>
         {% else %}
-            <a href="/signup">Signup</a>
-            <a href="/login">Login</a>
+            <a href="/signup">{{ getattr(languages, lan+'_signup_button', 'Sign Up') }}</a>
+            <a href="/login">{{ getattr(languages, lan+'_login_button', 'Login') }}</a>
         {% endif %}
     </div>
 </nav>
+
+<script>
+function changeLanguage(language) {
+    window.location.href = '/set-language/' + language;
+}
+</script>

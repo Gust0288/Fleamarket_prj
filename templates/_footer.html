@@ -1,3 +1,7 @@
+
+
+
+
 <script src="{{ url_for('static', filename='mixhtml.js') }}"></script>
     <script src="{{ url_for('static', filename='app.js') }}"></script>
     <script src="{{ url_for('static', filename='profile.js') }}"></script>
@@ -27,16 +31,17 @@
 
         var marker = L.marker([{{ item.item_lat }}, {{ item.item_lon }}], { icon: customIcon }).addTo(map);
         marker.on('click', function() {
-    // Use fetch to get item details and update the right panel
-        fetch(`/items/{{ item.item_pk }}`)
-        .then(response => response.text())
-        .then(html => {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            const itemContent = doc.querySelector('mixhtml[mix-replace="#item"]').innerHTML;
-            document.querySelector('#item').innerHTML = itemContent;
-            // mix_convert(); // Re-initialize mixhtml functionality
-        });
+            // Use fetch to get item details and update the right panel
+            fetch(`/items/{{ item.item_pk }}`)
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const itemContent = doc.querySelector('mixhtml[mix-replace="#item"]').innerHTML;
+                document.querySelector('#item').innerHTML = itemContent;
+                // Call our new function to load the address after updating the content
+                loadItemAddress();
+            });
         });
     {% endfor %}
 
@@ -44,7 +49,7 @@
     </script>
 
     
-    
+    <footer>Website by Gustav Bøgh, Copenhagen School of Design and Technology</footer>
 
 </body>
 </html>

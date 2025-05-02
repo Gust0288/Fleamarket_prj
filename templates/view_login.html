@@ -8,15 +8,14 @@
     </h1>
 
     <form action="/login" method="POST">
-        <input name="user_email" type="text" placeholder="user email" >
-        <input name="user_password" type="text" placeholder="user password">
+        <input name="user_email" type="text" placeholder="{{ getattr(languages, lan+'_user_email', 'email') }}" >
+        <input name="user_password" type="password" placeholder="{{ getattr(languages, lan+'_user_password', 'password') }}">
         <button class="mt1">
-            Login
+            {{ getattr(languages, lan+'_login_button', 'Login') }}
         </button>
     </form>
 
-    <a href="/forgot-password">Forgot password?</a>
+    <a id="forgot-password" href="/forgot-password">{{ getattr(languages, lan+'_forgot_password', 'Forgot password?') }}</a>
 </main>
-
 
 {% include "_footer.html" %}

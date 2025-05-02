@@ -57,7 +57,7 @@ USER_USERNAME_MIN = 2
 USER_USERNAME_MAX = 20
 USER_USERNAME_REGEX = f"^.{{{USER_USERNAME_MIN},{USER_USERNAME_MAX}}}$"
 def validate_user_username():
-    error = f"username {USER_USERNAME_MIN} to {USER_USERNAME_MAX} characters"
+    error = f"company_ex user_username"
     user_username = request.form.get("user_username", "").strip()
     if not re.match(USER_USERNAME_REGEX, user_username): raise Exception(error)
     return user_username
@@ -402,5 +402,47 @@ def send_item_unblocked_email(user_name, user_last_name, user_email, item_name):
     except Exception as ex:
         ic(ex)
         raise Exception("cannot send email")
+##############################
+def send_account_deletion_email(user_name, user_last_name, user_email):
+    try:
+        # Email and password of the sender's Gmail account
+        sender_email = "boeghgustav@gmail.com"
+        password = "chbo zuza cvso rqha"  # If 2FA is on, use an App Password instead
+
+        # Receiver email address - in production, use the actual user's email
+        receiver_email = "boeghgustav@gmail.com" # In production, use user_email
+        
+        # Create the email message
+        message = MIMEMultipart()
+        message["From"] = "Fleamarket Admin"
+        message["To"] = receiver_email
+        message["Subject"] = "Account Deletion Confirmation"
+
+    # Email content
+        body = f"""
+            Hello {user_name} {user_last_name},
+    
+            This email confirms that your account has been deleted from our system.
+    
+            If you did not request this deletion, please contact us immediately.
+    
+            Thank you,
+            Fleamarket Team
+            """
+        message.attach(MIMEText(body, "html"))
+
+        # Connect to Gmail's SMTP server and send the email
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()  # Upgrade the connection to secure
+            server.login(sender_email, password)
+            server.sendmail(sender_email, receiver_email, message.as_string())
+        ic(f"Account deletion confirmation email sent to {user_email}")
+
+        return "email sent"
+    except Exception as ex:
+        ic(ex)
+        raise Exception("cannot send email")
+
+
 
 

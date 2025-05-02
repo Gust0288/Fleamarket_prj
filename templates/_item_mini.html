@@ -1,12 +1,12 @@
 <a href="/items/{{ item.item_pk }}" mix-get class="item">
-    <img src="{{ url_for('static', filename='uploads/'+ item.item_image) }}">
+    <img src="{{ url_for('static', filename='uploads/'+ item.item_image) }}" alt="{{ getattr(languages, lan+'_item_image_alt', 'Item image') }}">
     <p>
         {{ item.item_name }}
     </p>
     <div>
-        {{ "{:,}".format(item.item_price)  }} USD
+        {{ "{:,}".format(item.item_price) }} {{ getattr(languages, lan+'_currency_usd', 'USD') }}
     </div>
     <div>
-        {{ "{:,.0f}".format(item.item_price * rates.rates.DKK) }} DKK
+        {{ "{:,.0f}".format(item.item_price * rates.rates.DKK) }} {{ getattr(languages, lan+'_currency_dkk', 'DKK') }}
     </div>
 </a>

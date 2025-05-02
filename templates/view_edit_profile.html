@@ -2,7 +2,7 @@
 {% include "_nav.html" %}
 
 <main id="edit-profile">
-    <h1>Edit Your Profile</h1>
+    <h1>{{ getattr(languages, lan+'_edit_profile', 'Edit Your Profile') }}</h1>
     
     {% if error_message %}
     <div class="error-message">
@@ -12,35 +12,35 @@
 
     <form action="/edit-profile" method="POST">
         <div class="form-group">
-            <label for="user_name">First Name</label>
+            <label for="user_name">{{ getattr(languages, lan+'_user_name', 'First Name') }}</label>
             <input class="{{ user_name_error }}" 
                   name="user_name" 
                   type="text" 
-                  placeholder="First Name" 
+                  placeholder="{{ getattr(languages, lan+'_user_name', 'First Name') }}" 
                   value="{{ old_values.get('user_name', user.user_name) }}">
         </div>
         
         <div class="form-group">
-            <label for="user_last_name">Last Name</label>
+            <label for="user_last_name">{{ getattr(languages, lan+'_user_last_name', 'Last Name') }}</label>
             <input class="{{ user_last_name_error }}" 
                   name="user_last_name" 
                   type="text" 
-                  placeholder="Last Name" 
+                  placeholder="{{ getattr(languages, lan+'_user_last_name', 'Last Name') }}" 
                   value="{{ old_values.get('user_last_name', user.user_last_name) }}">
         </div>
         
         <div class="form-group">
-            <label for="user_email">Email</label>
+            <label for="user_email">{{ getattr(languages, lan+'_user_email', 'Email') }}</label>
             <input class="{{ user_email_error }}" 
                   name="user_email" 
                   type="text" 
-                  placeholder="Email" 
+                  placeholder="{{ getattr(languages, lan+'_user_email', 'Email') }}" 
                   value="{{ old_values.get('user_email', user.user_email) }}">
         </div>
         
         <div class="button-group">
-            <button type="submit">Save Changes</button>
-            <a href="/profile" class="cancel-button">Cancel</a>
+            <button type="submit">{{ getattr(languages, lan+'_save_changes', 'Save Changes') }}</button>
+            <a href="/profile" class="cancel-button">{{ getattr(languages, lan+'_cancel', 'Cancel') }}</a>
         </div>
     </form>
 </main>

@@ -1,5 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lan | default('en') }}" 
+        data-error-default="{{ error_default | default('An error occurred. Please try again.') }}"
+        data-text-confirm-delete-account="{{ getattr(languages, lan+'_confirm_delete_account', 'Are you sure you want to delete your account? This action cannot be undone.') }}"
+        data-text-confirm-delete-item="{{ getattr(languages, lan+'_confirm_delete_item', 'Are you sure you want to delete this item?') }}"
+        data-delete-success="{{ getattr(languages, lan+'_delete_success', 'Account deleted successfully. A confirmation email has been sent.') }}"
+        data-view-on-map="{{ getattr(languages, lan+'_view_on_map', 'View on map') }}"
+        >
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

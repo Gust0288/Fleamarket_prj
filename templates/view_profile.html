@@ -4,35 +4,33 @@
 <main id="profile">
     
     <div class="profile-info">
-        <h1>Welcome, {{ user.user_name }}</h1>
-        <h2>Your Information</h2>
-        <p><strong>Name:</strong> {{ user.user_name }}</p>
-        <p><strong>Last Name:</strong> {{ user.user_last_name }}</p>
-        <p><strong>Email:</strong> {{ user.user_email }}</p>
+        <h1>{{ getattr(languages, lan+'_welcome', 'Welcome') }}, {{ user.user_name }}</h1>
+        <h2>{{ getattr(languages, lan+'_your_information', 'Your Information') }}</h2>
+        <p><strong>{{ getattr(languages, lan+'_user_name', 'Name') }}:</strong> {{ user.user_name }}</p>
+        <p><strong>{{ getattr(languages, lan+'_user_last_name', 'Last Name') }}:</strong> {{ user.user_last_name }}</p>
+        <p><strong>{{ getattr(languages, lan+'_user_email', 'Email') }}:</strong> {{ user.user_email }}</p>
         
-        <a href="/edit-profile" class="edit-btn">Edit Profile</a>
-        <button id="delete-form" mix-delete="/user" onclick="confirmDelete()">
-            Delete account
-        </button>
+        <a href="/edit-profile" class="edit-btn">{{ getattr(languages, lan+'_edit_profile', 'Edit Profile') }}</a>
+        <button onclick="openDeleteModal()" class="delete-btn-small">{{ getattr(languages, lan+'_delete_account', 'Delete Account') }}</button>
     </div>
 
 
     <form mix-post="/item">
-        <legend>Add your own Fleamarket here:</legend>
-        <input type="text" name="name" placeholder="Name of the Fleamarket">
-        <input type="number" name="price" placeholder="Price">
-        <input type="float" name="lon" placeholder="Longitude">
-        <input type="float" name="lat" placeholder="Laditude">
+        <legend>{{ getattr(languages, lan+'_add_item_legend', 'Add your own Fleamarket here:') }}</legend>
+        <input type="text" name="name" placeholder="{{ getattr(languages, lan+'_item_name', 'Name of the Fleamarket') }}">
+        <input type="number" name="price" placeholder="{{ getattr(languages, lan+'_item_price', 'Price') }}">
+        <input type="float" name="lon" placeholder="{{ getattr(languages, lan+'_longitude', 'Longitude') }}">
+        <input type="float" name="lat" placeholder="{{ getattr(languages, lan+'_latitude', 'Latitude') }}">
         <input name="files" type="file" multiple>
         <button>
-            Create Fleamarket
+            {{ getattr(languages, lan+'_create_item', 'Create Fleamarket') }}
         </button>
     </form>
 
     <div class="user-items">
-        <h2>Your Items</h2>
-        <div id="user_items" data-user-pk="{{ user.user_pk }}">
-            <p>Loading your items...</p>
+        <h2>{{ getattr(languages, lan+'_your_items', 'Your Items') }}</h2>
+        <div id="user_items" data-user-pk="{{ user.user_pk }}" data-show-address="false">
+            <p>{{ getattr(languages, lan+'_loading_items', 'Loading your items...') }}</p>
         </div>
     </div>
 
@@ -41,38 +39,59 @@
     <div id="edit-item-modal" class="modal">
         <div class="modal-content">
             <span class="close-modal">&times;</span>
-            <h2>Edit Item</h2>
+            <h2>{{ getattr(languages, lan+'_item_edit', 'Edit Item') }}</h2>
             <form id="edit-item-form" mix-post="/items/edit">
                 <input type="hidden" id="edit-item-pk" name="item_pk">
                 <div class="form-group">
-                    <label for="edit-name">Name:</label>
+                    <label for="edit-name">{{ getattr(languages, lan+'_item_name', 'Name') }}:</label>
                     <input type="text" id="edit-name" name="name" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit-price">Price:</label>
+                    <label for="edit-price">{{ getattr(languages, lan+'_item_price', 'Price') }}:</label>
                     <input type="number" id="edit-price" name="price" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit-lon">Longitude:</label>
+                    <label for="edit-lon">{{ getattr(languages, lan+'_longitude', 'Longitude') }}:</label>
                     <input type="float" id="edit-lon" name="lon" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit-lat">Latitude:</label>
+                    <label for="edit-lat">{{ getattr(languages, lan+'_latitude', 'Latitude') }}:</label>
                     <input type="float" id="edit-lat" name="lat" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit-files">Upload New Images:</label>
+                    <label for="edit-files">{{ getattr(languages, lan+'_upload_new_images', 'Upload New Images') }}:</label>
                     <input id="edit-files" name="files" type="file" multiple>
-                    <p class="note">Leave empty to keep current images</p>
+                    <p class="note">{{ getattr(languages, lan+'_keep_current_images', 'Leave empty to keep current images') }}</p>
                 </div>
                 <div class="form-group">
-                    <label>Current Image:</label>
-                    <img id="edit-current-image" src="" alt="Current item image" style="max-width: 200px; max-height: 200px;">
+                    <label>{{ getattr(languages, lan+'_current_image', 'Current Image') }}:</label>
+                    <img id="edit-current-image" src="" alt="{{ getattr(languages, lan+'_current_item_image', 'Current item image') }}" style="max-width: 200px; max-height: 200px;">
                 </div>
-                <button type="submit">Save Changes</button>
+                <button type="submit">{{ getattr(languages, lan+'_save_changes', 'Save Changes') }}</button>
             </form>
         </div>
     </div>
+
+    
+<div id="delete-account-modal" class="modal">
+    <div class="modal-content" id="delete-modal">
+        <span class="close-modal" id="close-delete-modal">&times;</span>
+        <h2>{{ getattr(languages, lan+'_delete_account', 'Delete Account') }}</h2>
+        <p>{{ getattr(languages, lan+'_delete_confirmation', 'This action cannot be undone. All your items will be hidden from the marketplace.') }}</p>
+        <p>{{ getattr(languages, lan+'_delete_confirm', 'Please enter your password to confirm:') }}</p>
+        <form id="delete-password-form" mix-delete="/user">
+            <div class="form-group">
+                <label for="confirm-password">{{ getattr(languages, lan+'_user_password', 'Password') }}:</label>
+                <input type="password" id="confirm-password" name="password" required>
+                <div id="password-error" class="error-message" style="display: none; color: red;"></div>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="delete-btn">{{ getattr(languages, lan+'_delete_account', 'Delete My Account') }}</button>
+                <button type="button" id="cancel-delete" class="cancel-btn">{{ getattr(languages, lan+'_cancel', 'Cancel') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 
 </main>

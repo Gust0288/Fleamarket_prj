@@ -2,18 +2,18 @@
 {% include "_nav.html" %}
 
 <main id="admin-items">
-    <h1>Manage Items</h1>
+    <h1>{{ getattr(languages, lan+'_admin_manage_items', 'Manage Items') }}</h1>
     
     <table class="admin-table">
         <thead>
             <tr>
-                <th>Image</th>
-                <th>Name</th>
-                <th>Price (USD)</th>
-                <th>Location</th>
-                <th>Created At</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>{{ getattr(languages, lan+'_image', 'Image') }}</th>
+                <th>{{ getattr(languages, lan+'_item_name', 'Name') }}</th>
+                <th>{{ getattr(languages, lan+'_item_price', 'Price') }} (USD)</th>
+                <th>{{ getattr(languages, lan+'_item_location', 'Location') }}</th>
+                <th>{{ getattr(languages, lan+'_created_at', 'Created At') }}</th>
+                <th>{{ getattr(languages, lan+'_status', 'Status') }}</th>
+                <th>{{ getattr(languages, lan+'_actions', 'Actions') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -27,36 +27,35 @@
                 <td>{{ item.item_name }}</td>
                 <td>
                     <ul>{{ "{:,}".format(item.item_price) }} USD</ul>
-                    <ul>{{ "{:,.0f}".format(item.item_price * rates.rates.DKK) }} DKK </ul>
+                    <ul>{{ "{:,.0f}".format(item.item_price * rates.rates.DKK) }} {{ getattr(languages, lan+'_currency_dkk', 'DKK') }}</ul>
                 </td>
                 <td>
-                    <span title="Coordinates: {{ item.item_lat }}, {{ item.item_lon }}">
+                    <span title="{{ getattr(languages, lan+'_coordinates', 'Coordinates') }}: {{ item.item_lat }}, {{ item.item_lon }}">
                         {{ item.item_lat | truncate(8, True) }}, {{ item.item_lon | truncate(8, True) }}
                     </span>
                 </td>
                 <td>{{ item.item_created_at|timestampToDate }}</td>
-<!-- in the Status column -->
                 <td>
                     {% if item.item_deleted_at > 0 %}
-                        <span class="status deleted">Deleted</span>
+                        <span class="status deleted">{{ getattr(languages, lan+'_deleted_at', 'Deleted') }}</span>
                     {% elif item.item_blocked %}
-                        <span class="status blocked">Blocked</span>
+                        <span class="status blocked">{{ getattr(languages, lan+'_blocked', 'Blocked') }}</span>
                     {% else %}
-                        <span class="status active">Active</span>
+                        <span class="status active">{{ getattr(languages, lan+'_active', 'Active') }}</span>
                     {% endif %}
                 </td>
                 <td>
                     {% if item.item_blocked %}
                         <button class="admin-button success" 
                                 mix-post="/admin/unblock-item/{{ item.item_pk }}" 
-                                onclick="return confirm('Are you sure you want to unblock this item? An email notification will be sent to the owner.')">
-                            Unblock Item
+                                onclick="return confirm('{{ getattr(languages, lan+'_confirm_unblock_item', 'Are you sure you want to unblock this item? An email notification will be sent to the owner.') }}')">
+                            {{ getattr(languages, lan+'_admin_unblock_item', 'Unblock Item') }}
                         </button>
                     {% else %}
                         <button class="admin-button warning" 
                                 mix-post="/admin/block-item/{{ item.item_pk }}" 
-                                onclick="return confirm('Are you sure you want to block this item? An email notification will be sent to the owner.')">
-                            Block Item
+                                onclick="return confirm('{{ getattr(languages, lan+'_confirm_block_item', 'Are you sure you want to block this item? An email notification will be sent to the owner.') }}')">
+                            {{ getattr(languages, lan+'_admin_block_item', 'Block Item') }}
                         </button>
                     {% endif %}
                 </td>

@@ -336,6 +336,10 @@ async function mix_fetch(url, method, form, push_to_history=true, el_cover=false
             }                                                                                                 
         })
         mix_convert()
+
+        if (typeof loadItemAddress === 'function') { // added for ensuring loading of adress , when a new item is clicked
+            loadItemAddress();
+        }
     }catch(error){ console.error("mix_fetch()", error) }    
 }
 

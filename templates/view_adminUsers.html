@@ -2,18 +2,18 @@
 {% include "_nav.html" %}
 
 <main id="admin-users">
-    <h1>Manage Users</h1>
+    <h1>{{ getattr(languages, lan+'_admin_manage_users', 'Manage Users') }}</h1>
     
     <table class="admin-table">
         <thead>
             <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Created</th>
-                <th>Verified</th>
-                <th>Admin</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>{{ getattr(languages, lan+'_user_name', 'Name') }}</th>
+                <th>{{ getattr(languages, lan+'_user_email', 'Email') }}</th>
+                <th>{{ getattr(languages, lan+'_created_at', 'Created') }}</th>
+                <th>{{ getattr(languages, lan+'_verified', 'Verified') }}</th>
+                <th>{{ getattr(languages, lan+'_admin', 'Admin') }}</th>
+                <th>{{ getattr(languages, lan+'_status', 'Status') }}</th>
+                <th>{{ getattr(languages, lan+'_actions', 'Actions') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -22,15 +22,15 @@
                 <td>{{ user.user_name }} {{ user.user_last_name }}</td>
                 <td>{{ user.user_email }}</td>
                 <td>{{ user.user_created_at|timestampToDate }}</td>
-                <td>{% if user.user_verified_at > 0 %}Yes{% else %}No{% endif %}</td>
-                <td>{% if user.user_is_admin %}Yes{% else %}No{% endif %}</td>
+                <td>{% if user.user_verified_at > 0 %}{{ getattr(languages, lan+'_yes', 'Yes') }}{% else %}{{ getattr(languages, lan+'_no', 'No') }}{% endif %}</td>
+                <td>{% if user.user_is_admin %}{{ getattr(languages, lan+'_yes', 'Yes') }}{% else %}{{ getattr(languages, lan+'_no', 'No') }}{% endif %}</td>
                 <td>
                     {% if user.user_deleted_at > 0 %}
-                        <span class="status deleted">Deleted</span>
+                        <span class="status deleted">{{ getattr(languages, lan+'_deleted_at', 'Deleted') }}</span>
                     {% elif user.user_blocked %}
-                        <span class="status blocked">Blocked</span>
+                        <span class="status blocked">{{ getattr(languages, lan+'_blocked', 'Blocked') }}</span>
                     {% else %}
-                        <span class="status active">Active</span>
+                        <span class="status active">{{ getattr(languages, lan+'_active', 'Active') }}</span>
                     {% endif %}
                 </td>
                 <td>
@@ -38,14 +38,14 @@
                         {% if user.user_blocked %}
                             <button class="admin-button success" 
                                     mix-post="/admin/unblock-user/{{ user.user_pk }}" 
-                                    onclick="return confirm('Are you sure you want to unblock this user? An email notification will be sent.')">
-                                Unblock User
+                                    onclick="return confirm('{{ getattr(languages, lan+'_confirm_unblock_user', 'Are you sure you want to unblock this user? An email notification will be sent.') }}')">
+                                {{ getattr(languages, lan+'_admin_unblock_user', 'Unblock User') }}
                             </button>
                         {% else %}
                             <button class="admin-button warning" 
                                     mix-post="/admin/block-user/{{ user.user_pk }}" 
-                                    onclick="return confirm('Are you sure you want to block this user? An email notification will be sent.')">
-                                Block User
+                                    onclick="return confirm('{{ getattr(languages, lan+'_confirm_block_user', 'Are you sure you want to block this user? An email notification will be sent.') }}')">
+                                {{ getattr(languages, lan+'_admin_block_user', 'Block User') }}
                             </button>
                         {% endif %}
                     {% endif %}
