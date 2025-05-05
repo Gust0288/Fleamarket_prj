@@ -73,12 +73,22 @@ form{
     border-radius: 4px;
     border: 1px solid var(--color-error-border);
 }
+.error-messages{
+    color: var(--color-error-dark);
+    font-size: larger;
+}
 
 .input_error {
     border: 2px solid var(--color-error);
 }
+#posted{
+    color: green;
+    font-size: larger;
+}
 
 .hidden{ display: none !important; }
+.hidden2{ visibility: hidden; }
+
 
 nav {
     display: grid;
@@ -451,6 +461,7 @@ footer {
 .mix-error{
     background-color: var(--color-error-bg);
 }
+
 @keyframes mix-fade-out {
     0% {
         opacity: 1;
@@ -517,6 +528,9 @@ footer {
         #items_more{
             margin: 0 !important;
         }
+    }
+    #map{
+        height: 300px;
     }
 }
 

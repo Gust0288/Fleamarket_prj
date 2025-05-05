@@ -85,7 +85,10 @@ REGEX_EMAIL = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 def validate_user_email():
     error = f"company_ex email"
     email = request.form.get("user_email", "").strip()
-    if not re.match(REGEX_EMAIL, email): raise Exception(error)
+    if not email:
+        raise Exception("company_ex email_empty")  # Specific error for empty email
+    if not re.match(REGEX_EMAIL, email):
+        raise Exception("company_ex email_invalid")  # Specific error for invalid email format
     return email
 
 ##############################
@@ -106,16 +109,69 @@ def validate_page_number(page_number):
     if not re.match(REGEX_PAGE_NUMBER, page_number): raise Exception(error)
     return int(page_number)
 ##############################
+#post_item Validation
+ITEM_NAME_MIN = 3
+ITEM_NAME_MAX = 30
+ITEM_NAME_REGEX = f"^.{{{ITEM_NAME_MIN},{ITEM_NAME_MAX}}}$"
+
+ITEM_PRICE_MIN = 0.01  # Minimum price
+ITEM_PRICE_MAX = 1000000  # Maximum price
+
+ITEM_COORDINATES_MIN_LON = -180
+ITEM_COORDINATES_MAX_LON = 180
+ITEM_COORDINATES_MIN_LAT = -90
+ITEM_COORDINATES_MAX_LAT = 90
+
+def validate_post_item_form():
+    # Validate item name
+    error_name = f"company_ex item_name"
+    item_name = request.form.get("name", "").strip()
+    if not re.match(ITEM_NAME_REGEX, item_name):
+        raise Exception(error_name)
+
+    # Validate item price
+    error_price = f"company_ex item_price"
+    item_price = request.form.get("price", "").strip()
+    try:
+        item_price = float(item_price)
+        if item_price < ITEM_PRICE_MIN or item_price > ITEM_PRICE_MAX:
+            raise Exception(error_price)
+    except ValueError:
+        raise Exception(error_price)
+
+    # Validate longitude and latitude
+    error_coordinates = f"company_ex item_coordinates"
+    item_lon = request.form.get("lon", "").strip()
+    item_lat = request.form.get("lat", "").strip()
+    try:
+        item_lon = float(item_lon)
+        item_lat = float(item_lat)
+        if not (ITEM_COORDINATES_MIN_LON <= item_lon <= ITEM_COORDINATES_MAX_LON) or not (ITEM_COORDINATES_MIN_LAT <= item_lat <= ITEM_COORDINATES_MAX_LAT):
+            raise Exception(error_coordinates)
+    except ValueError:
+        raise Exception(error_coordinates)
+
+    # Validate images
+    images_names = validate_item_images()  # Reuse the existing `validate_item_images` function
+
+    return {
+        "name": item_name,
+        "price": item_price,
+        "lon": item_lon,
+        "lat": item_lat,
+        "images": images_names
+    }
+##############################
 ALLOWED_EXTENSIONS = ["png", "jpg", "jpeg", "gif"]
 MAX_FILE_SIZE = 1 * 1024 * 1024  # 1MB - size in bytes
 MAX_FILES = 5
 
 def validate_item_images():
     images_names = []
-    if "files" not in request.files:
+    if "images" not in request.files:
          raise Exception("company_ex at least one file")
     
-    files = request.files.getlist('files')
+    files = request.files.getlist('images')
     
     if len(files) > MAX_FILES:
         raise Exception("company_ex max 5 files")

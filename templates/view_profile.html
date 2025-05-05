@@ -16,12 +16,16 @@
 
 
     <form mix-post="/item">
-        <legend>{{ getattr(languages, lan+'_add_item_legend', 'Add your own Fleamarket here:') }}</legend>
+        <div id="post-item-box">
+            <legend>{{ getattr(languages, lan+'_add_item_legend', 'Add your own Fleamarket here:') }}</legend>
+            <p id="post-item-error" class="error-messages">{{ error_message }}</p>
+            <p id="posted"></p>
+        </div>
         <input type="text" name="name" placeholder="{{ getattr(languages, lan+'_item_name', 'Name of the Fleamarket') }}">
         <input type="number" name="price" placeholder="{{ getattr(languages, lan+'_item_price', 'Price') }}">
         <input type="float" name="lon" placeholder="{{ getattr(languages, lan+'_longitude', 'Longitude') }}">
         <input type="float" name="lat" placeholder="{{ getattr(languages, lan+'_latitude', 'Latitude') }}">
-        <input name="files" type="file" multiple>
+        <input name="images" type="file" multiple>
         <button>
             {{ getattr(languages, lan+'_create_item', 'Create Fleamarket') }}
         </button>

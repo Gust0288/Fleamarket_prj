@@ -156,30 +156,48 @@ def view_index():
 @app.post("/item")
 def post_item():
     try:
+        # Get the current language
+        lan = get_language()
+        
+        # Define localized error messages
+        name_required = getattr(languages, f"{lan}_item_name_required", "Item name is required")
+        invalid_values = getattr(languages, f"{lan}_invalid_price_coords", "Invalid price or coordinates")
+        image_required = getattr(languages, f"{lan}_image_required", "At least one image is required")
+        max_files_error = getattr(languages, f"{lan}_max_files_error", "Cannot upload more than 5 files")
+        invalid_extension_error = getattr(languages, f"{lan}_invalid_extension_error", "File extension not allowed")
+        file_too_large_error = getattr(languages, f"{lan}_file_too_large_error", "File too large")
+        system_error = getattr(languages, f"{lan}_system_error", "System under maintenance")
+        item_created_message = getattr(languages, f"{lan}_item_created_message", "Fleamarket Created, Reload page to see it")
+
         # Validate user is logged in
         user = x.validate_user_logged()
+
+        #form validation
+        validated_data = x.validate_post_item_form()
         
         # Get item form data
-        name = request.form.get("name", "").strip()
-        price = request.form.get("price", "0").strip()
-        lon = request.form.get("lon", "0").strip()
-        lat = request.form.get("lat", "0").strip()
+        # Extract validated fields
+        name = validated_data["name"]
+        price = validated_data["price"]
+        lon = validated_data["lon"]
+        lat = validated_data["lat"]
+        images_names = validated_data["images"]
         
         # Basic validation
         if not name:
-            return "Item name is required", 400
+            return name_required, 400
         
         try:
             price = int(price)
             lon = float(lon)
             lat = float(lat)
         except ValueError:
-            return "Invalid price or coordinates", 400
+            return invalid_values, 400
         
         # Process images upload
-        images_names = x.validate_item_images()
-        if not images_names:
-            return "At least one image is required", 400
+        # images_names = x.validate_item_images()
+        # if not images_names:
+        #     return image_required, 400
             
         db, cursor = x.db()
         
@@ -231,35 +249,36 @@ def post_item():
                 </div>
             """
         
-        # Return success message with image previews
-        return f"""
-            <mixhtml mix-top="#images">
-                {html}
-            </mixhtml>
-            <mixhtml mix-top="main">
-                Item created successfully!
-            </mixhtml>
-        """
         
+        return f'<mixhtml mix-update="#posted">{item_created_message}</mixhtml>'
     except Exception as ex:
         ic(ex)
 
+        if str(ex) == "company_ex item_name":
+            return f'<mixhtml mix-update="#post-item-error">{name_required}</mixhtml>', 400
+
         if "company_ex at least one file" in str(ex):
-            return "Upload at least 1 file", 400        
+            return f'<mixhtml mix-update="#post-item-error">{image_required}</mixhtml>', 400
 
         if "company_ex max 5 files" in str(ex):
-            return "Cannot upload more than 5 files", 400
-                
+            return f'<mixhtml mix-update="#post-item-error">{max_files_error}</mixhtml>', 400
+
         if "company_ex file extension not allowed" in str(ex):
-            return "File extension not allowed", 400
-        
+            return f'<mixhtml mix-update="#post-item-error">{invalid_extension_error}</mixhtml>', 400
+
         if "company_ex file too large" in str(ex):
-            return "File too large", 400
+            return f'<mixhtml mix-update="#post-item-error">{file_too_large_error}</mixhtml>', 400
+
+        if "company_ex item_price" in str(ex):
+            return f'<mixhtml mix-update="#post-item-error">{invalid_values}</mixhtml>', 400
+
+        if "company_ex item_coordinates" in str(ex):
+            return f'<mixhtml mix-update="#post-item-error">{invalid_values}</mixhtml>', 400
 
         if "db" in locals():
             db.rollback()
-            
-        return str(ex), 400
+
+        return f'<mixhtml mix-update="#post-item-error">{system_error}</mixhtml>', 400
     finally:
         if "cursor" in locals(): cursor.close()
         if "db" in locals(): db.close()
@@ -654,6 +673,7 @@ def signup():
         email_invalid = getattr(languages, f"{lan}_user_email_invalid", "Invalid email")
         password_invalid = getattr(languages, f"{lan}_user_password_invalid", "Invalid password")
         email_exists = getattr(languages, f"{lan}_user_email_exists", "Email already exists")
+        #TODO add
         username_exists = getattr(languages, f"{lan}_user_username_exists", "Username already exists")
         system_error = getattr(languages, f"{lan}_system_error", "System under maintenance")
         
@@ -825,7 +845,10 @@ def login():
         invalid_credentials = getattr(languages, f"{lan}_login_invalid_credentials", "Invalid email or password")
         account_not_verified = getattr(languages, f"{lan}_login_account_not_verified", "Please verify your email before logging in")
         account_blocked = getattr(languages, f"{lan}_login_account_blocked", "Your account has been blocked. Please contact support")
-        login_failed = getattr(languages, f"{lan}_login_failed", "Login failed")
+        email_empty = getattr(languages, f"{lan}_email_empty", "Email cannot be empty")
+        email_invalid = getattr(languages, f"{lan}_email_invalid", "Invalid email format")
+        
+
         
         user_email = x.validate_user_email()
         user_password = x.validate_user_password()
@@ -853,6 +876,11 @@ def login():
         return redirect(url_for("profile"))
     except Exception as ex:
         ic(ex)
+
+        if str(ex) == "company_ex email_empty":
+            return redirect(url_for("show_login", message=email_empty))
+        if str(ex) == "company_ex email_invalid":
+            return redirect(url_for("show_login", message=email_invalid))
         
         # Check if the exception is one of our known errors
         if str(ex) in [invalid_credentials, account_not_verified, account_blocked]:
@@ -975,6 +1003,7 @@ def edit_profile():
         last_name_invalid = getattr(languages, f"{lan}_user_last_name_invalid", "Invalid last name")
         email_invalid = getattr(languages, f"{lan}_user_email_invalid", "Invalid email")
         email_exists = getattr(languages, f"{lan}_user_email_exists", "Email already in use by another account")
+        #TODO add <<<>>>>
         update_failed = getattr(languages, f"{lan}_profile_update_failed", "Failed to update profile")
         update_success = getattr(languages, f"{lan}_profile_update_success", "Profile updated successfully")
        

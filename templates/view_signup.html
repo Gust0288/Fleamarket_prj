@@ -2,7 +2,8 @@
 {% include "_nav.html" %}
 
 <main id="signup">
-    <h1>
+    <h1>{{ getattr(languages, lan+'_signup_button', 'Signup') }}</h1>
+    <h1 class="error-messages">
         {{ error_message }}
     </h1>
 

@@ -89,6 +89,12 @@ dk_login_account_not_verified = "Bekræft venligst din email før login"
 en_login_account_blocked = "Your account has been blocked. Please contact support"
 dk_login_account_blocked = "Din konto er blevet blokeret. Kontakt venligst support"
 
+en_email_empty = "Email cannot be empty"
+dk_email_empty = "Email må ikke være tom"
+
+en_email_invalid = "Invalid email format"
+dk_email_invalid = "Ugyldigt emailformat"
+
 # Verification messages
 en_verification_success = "Account successfully verified"
 dk_verification_success = "Konto bekræftet med succes"
@@ -147,6 +153,13 @@ dk_item_updated = "Vare opdateret med succes"
 en_item_deleted = "Item deleted successfully"
 dk_item_deleted = "Vare slettet med succes"
 
+# Item-related error messages
+en_item_name_required = "Fleamarket name is required"
+dk_item_name_required = "Fleamarket navn er påkrævet"
+
+en_item_created_message = "Fleamarket Created, Reload page to see it"
+dk_item_created_message = "Fleamarket oprettet, genindlæs siden for at se det"
+
 # Password management
 en_forgot_password = "Forgot Password"
 dk_forgot_password = "Glemt Adgangskode"
@@ -204,11 +217,11 @@ dk_admin_block_user = "Bloker Bruger"
 en_admin_unblock_user = "Unblock User"
 dk_admin_unblock_user = "Fjern Blokering af Bruger"
 
-en_admin_block_item = "Block Item"
-dk_admin_block_item = "Bloker Vare"
+en_admin_block_item = "Block Fleamarket"
+dk_admin_block_item = "Bloker Fleamarket"
 
-en_admin_unblock_item = "Unblock Item"
-dk_admin_unblock_item = "Fjern Blokering af Vare"
+en_admin_unblock_item = "Unblock Fleamarket"
+dk_admin_unblock_item = "Fjern Blokering af Fleamarket"
 
 en_admin_user_blocked = "User blocked successfully"
 dk_admin_user_blocked = "Bruger blokeret med succes"
@@ -487,3 +500,4 @@ dk_address_not_found = "Adresse ikke fundet"
 
 en_view_on_map = "View on map"
 dk_view_on_map = "Se på kort"
+

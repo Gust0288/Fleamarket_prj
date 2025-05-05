@@ -4,8 +4,7 @@
         <p>For You</p>
     </a>
     
-
-    <div id="search_container">
+    <div id="search_container" class="hidden2">
         <input id="input_search" oninput="search()" class="" type="text" placeholder="{{ getattr(languages, lan+'_search', 'Search') }}">
         <div id="search_results" class="hidden">
         </div>
@@ -35,4 +34,12 @@
 function changeLanguage(language) {
     window.location.href = '/set-language/' + language;
 }
+document.addEventListener("DOMContentLoaded", function () {
+    const searchContainer = document.getElementById("search_container");
+    if (window.location.pathname === "/") {
+        searchContainer.classList.remove("hidden2");
+    } else {
+        searchContainer.classList.add("hidden2");
+    }
+});
 </script>
