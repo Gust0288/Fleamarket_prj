@@ -1,14 +1,34 @@
 <div id="item" data-pk="{{ item.item_pk }}" data-name="{{ item.item_name }}" data-price="{{ item.item_price }}" data-lon="{{ item.item_lon }}" data-lat="{{ item.item_lat }}" data-image="{{ item.item_image }}">
-    <img src="{{ url_for('static', filename='uploads/'+item.item_image) }}" alt="{{ getattr(languages, lan+'_item_image_alt', 'Item image') }}">
-    <p>
+    
+    <div class="item-image-gallery">
+        <!-- Main image -->
+        <div class="main-image">
+            <img src="{{ url_for('static', filename='uploads/'+item.item_image) }}" alt="{{ getattr(languages, lan+'_item_image_alt', 'Item image') }}">
+        </div>
+        
+        <!-- Thumbnail images - only shown if there are multiple images -->
+        {% if item_images and item_images|length > 1 and not is_profile_view|default(false) %}
+        <div class="thumbnail-images">
+            {% for img in item_images %}
+                <img src="{{ url_for('static', filename='uploads/'+img.image_name) }}" 
+                     alt="{{ getattr(languages, lan+'_item_image_alt', 'Item image') }}"
+                     onclick="switchMainImage(this.src)"
+                     class="thumbnail {% if loop.first %}active{% endif %}">
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+
+    <p id="item-name">
         {{ item.item_name }}
     </p>    
-    <div>
+    <p class="currency">
         {{ "{:,}".format(item.item_price) }} {{ getattr(languages, lan+'_currency_usd', 'USD') }}
-    </div>
-    <div>
+    </p>
+    <p class="currency">
         {{ "{:,.0f}".format(item.item_price * rates.rates.DKK) }} {{ getattr(languages, lan+'_currency_dkk', 'DKK') }}
-    </div>    
+    </p>    
 
     {% if show_address|default(true) %}
     <p class="item-address">
@@ -29,3 +49,18 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+    function switchMainImage(src) {
+        document.querySelector('.main-image img').src = src;
+        
+        // Update active thumbnail
+        document.querySelectorAll('.thumbnail').forEach(thumb => {
+            if (thumb.src === src) {
+                thumb.classList.add('active');
+            } else {
+                thumb.classList.remove('active');
+            }
+        });
+    }
+</script>

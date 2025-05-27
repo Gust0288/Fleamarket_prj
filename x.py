@@ -122,6 +122,41 @@ ITEM_COORDINATES_MAX_LON = 180
 ITEM_COORDINATES_MIN_LAT = -90
 ITEM_COORDINATES_MAX_LAT = 90
 
+def validate_edit_item_form():
+    # Validate item name
+    error_name = f"company_ex item_name"
+    item_name = request.form.get("name", "").strip()
+    if not re.match(ITEM_NAME_REGEX, item_name):
+        raise Exception(error_name)
+
+    # Validate item price
+    error_price = f"company_ex item_price"
+    item_price = request.form.get("price", "").strip()
+    try:
+        item_price = float(item_price)
+        if item_price < ITEM_PRICE_MIN or item_price > ITEM_PRICE_MAX:
+            raise Exception(error_price)
+    except ValueError:
+        raise Exception(error_price)
+
+    # Validate longitude and latitude
+    error_coordinates = f"company_ex item_coordinates"
+    item_lon = request.form.get("lon", "").strip()
+    item_lat = request.form.get("lat", "").strip()
+    try:
+        item_lon = float(item_lon)
+        item_lat = float(item_lat)
+        if not (ITEM_COORDINATES_MIN_LON <= item_lon <= ITEM_COORDINATES_MAX_LON) or not (ITEM_COORDINATES_MIN_LAT <= item_lat <= ITEM_COORDINATES_MAX_LAT):
+            raise Exception(error_coordinates)
+    except ValueError:
+        raise Exception(error_coordinates)
+
+    return {
+        "name": item_name,
+        "price": item_price,
+        "lon": item_lon,
+        "lat": item_lat
+    }
 def validate_post_item_form():
     # Validate item name
     error_name = f"company_ex item_name"

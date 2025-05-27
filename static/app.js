@@ -131,13 +131,22 @@ function loadItemAddress() {
                         // Use formatted address or fall back to display_name
                         addressEl.innerHTML = formattedAddress || data.display_name;
                         
-                        // Add map link
-                        const mapLink = document.createElement('a');
-                        mapLink.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`;
-                        mapLink.target = '_blank';
-                        mapLink.classList.add('map-link');
-                        mapLink.innerHTML = ` <small>${viewOnMapText}</small>`;
-                        addressEl.appendChild(mapLink);
+                        const mapButton = document.createElement('button');
+                        mapButton.type = 'button';
+                        mapButton.classList.add('center-map-button');
+                        mapButton.innerHTML = `<small>${viewOnMapText}</small>`;
+                        
+                        // Add click handler to center the map on this location
+                        mapButton.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            // Center map on this location and zoom in
+                            if (typeof map !== 'undefined') {
+                                map.setView([lat, lon], 17);
+                                highlightMarker(lat, lon);
+                            }
+                        });
+                        
+                        addressEl.appendChild(mapButton);
                     } else {
                         addressEl.textContent = addressNotFoundText;
                     }
@@ -150,6 +159,41 @@ function loadItemAddress() {
             addressEl.textContent = "Coordinates: " + lat + ", " + lon;
         }
     });
+}
+
+// Function to highlight a marker on the map
+function highlightMarker(lat, lon) {
+    // Create a temporary highlight effect
+    const highlightMarker = L.circleMarker([lat, lon], {
+        color: '#3388ff',
+        fillColor: '#3388ff',
+        fillOpacity: 0.2,
+        radius: 25,
+        weight: 2
+    }).addTo(map);
+    
+    const animateHighlight = () => {
+        if (highlightMarker) {
+            highlightMarker.setStyle({ radius: 25, opacity: 1, fillOpacity: 0.2 });
+            
+            setTimeout(() => {
+                if (highlightMarker) {
+                    highlightMarker.setStyle({ radius: 35, opacity: 0.5, fillOpacity: 0.1 });
+                    
+                    setTimeout(() => {
+                        if (highlightMarker) animateHighlight();
+                    }, 400);
+                }
+            }, 400);
+        }
+    };
+    
+    animateHighlight();
+    setTimeout(() => {
+        if (highlightMarker && map) {
+            map.removeLayer(highlightMarker);
+        }
+    }, 3000);
 }
 
 // Add an event listener for when DOM content is loaded

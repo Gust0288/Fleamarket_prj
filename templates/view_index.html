@@ -17,14 +17,17 @@
     </section>
 
     <section id="right">
-        {% set item = items[0] %}
-        {% include "_item.html" with context %}
+        {% if items %}
+            {% set item = items[0] %}  <!-- Always use the first item (newest) -->
+            {% include "_item.html" with context %}
+        {% else %}
+            <div id="item">
+                <p>{{ getattr(languages, lan+'_no_items_yet', 'No items available yet.') }}</p>
+            </div>
+        {% endif %}
     </section>
 
 </main>
-
-
-
 
 {% include "_footer.html" %}
     

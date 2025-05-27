@@ -44,6 +44,7 @@
         <div class="modal-content">
             <span class="close-modal">&times;</span>
             <h2>{{ getattr(languages, lan+'_item_edit', 'Edit Item') }}</h2>
+            <p id="edit-item-error" class="error-messages">{{ error_message }}</p>
             <form id="edit-item-form" mix-post="/items/edit">
                 <input type="hidden" id="edit-item-pk" name="item_pk">
                 <div class="form-group">

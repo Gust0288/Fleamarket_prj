@@ -9,6 +9,7 @@ import os
 import json
 import requests
 import languages
+import re
 
 app = Flask(__name__)
 
@@ -130,6 +131,7 @@ def view_index():
         q = "SELECT * FROM items WHERE item_blocked = 0 AND item_deleted_at = 0 ORDER BY item_created_at LIMIT 2"
         cursor.execute(q)
         items = cursor.fetchall()
+        
 
         rates = load_rates()
         
@@ -156,10 +158,8 @@ def view_index():
 @app.post("/item")
 def post_item():
     try:
-        # Get the current language
         lan = get_language()
         
-        # Define localized error messages
         name_required = getattr(languages, f"{lan}_item_name_required", "Item name is required")
         invalid_values = getattr(languages, f"{lan}_invalid_price_coords", "Invalid price or coordinates")
         image_required = getattr(languages, f"{lan}_image_required", "At least one image is required")
@@ -169,7 +169,6 @@ def post_item():
         system_error = getattr(languages, f"{lan}_system_error", "System under maintenance")
         item_created_message = getattr(languages, f"{lan}_item_created_message", "Fleamarket Created, Reload page to see it")
 
-        # Validate user is logged in
         user = x.validate_user_logged()
 
         #form validation
@@ -201,11 +200,9 @@ def post_item():
             
         db, cursor = x.db()
         
-        # Generate a unique item_pk
         item_pk = uuid.uuid4().hex
         item_created_at = int(time.time())
         
-        # Create item record with the first image as the main image
         item_image = images_names[0]
         
         # Insert the item with reference to the logged-in user
@@ -293,11 +290,16 @@ def get_item_by_pk(item_pk):
         cursor.execute(q, (item_pk,))
         item = cursor.fetchone()
 
+        q_images = "SELECT * FROM images WHERE image_item_fk = %s"
+        cursor.execute(q_images, (item_pk,))
+        item_images = cursor.fetchall()
+
         rates = load_rates()
 
         show_address = request.args.get('show_address', 'true').lower() == 'true'
 
-        html_item = render_template("_item.html", item=item, rates=rates, is_profile_view=False, lan=lan, languages=languages, show_address=show_address)
+        html_item = render_template("_item.html", item=item, rates=rates, is_profile_view=False, lan=lan, languages=languages, show_address=show_address,
+                                    item_images=item_images)
         return f"""
             <mixhtml mix-replace="#item">
                 {html_item}
@@ -362,7 +364,15 @@ def get_item_by_user(item_user_fk):
         # Generate HTML for all items
         items_html = ""
         for item in items:
-            items_html += render_template("_item.html", item=item, rates=rates, is_profile_view=True, lan=lan, languages=languages, show_address=False)
+        # Fetch images for this item
+            q_images = "SELECT * FROM images WHERE image_item_fk = %s"
+            cursor.execute(q_images, (item["item_pk"],))
+            item_images = cursor.fetchall()
+        
+            items_html += render_template("_item.html", item=item, rates=rates, 
+                                     is_profile_view=True, lan=lan, 
+                                     languages=languages, show_address=False,
+                                     item_images=item_images)
 
         return f"""
             <mixhtml mix-replace="#user_items">
@@ -448,77 +458,70 @@ def get_items_by_page(page_number):
 @app.post("/items/edit")
 def edit_item():
     try:
-        # Validate user is logged in
         user = x.validate_user_logged()
 
         lan = get_language()
         
-        # Get item data from form
+        # Define localized error messages
+        name_required = getattr(languages, f"{lan}_item_name_required", "Item name is required")
+        invalid_values = getattr(languages, f"{lan}_invalid_price_coords", "Invalid price or coordinates")
+        invalid_extension_error = getattr(languages, f"{lan}_invalid_extension_error", "File extension not allowed")
+        file_too_large_error = getattr(languages, f"{lan}_file_too_large_error", "File too large")
+        max_files_error = getattr(languages, f"{lan}_max_files_error", "Cannot upload more than 5 files")
+        permission_denied_message = getattr(languages, f"{lan}_item_permission_denied", "Item not found or you don't have permission to edit it")
+        update_failed_message = getattr(languages, f"{lan}_item_update_failed", "Failed to update item")
+        
+        # Get the item ID from the form
         item_pk = request.form.get("item_pk", "").strip()
-        name = request.form.get("name", "").strip()
-        price = request.form.get("price", "0").strip()
-        lon = request.form.get("lon", "0").strip()
-        lat = request.form.get("lat", "0").strip()
-
-         # Basic validation with localized error messages
-        required_fields_message = getattr(languages, f"{lan}_required_fields_missing", "Item ID and name are required")
-        invalid_values_message = getattr(languages, f"{lan}_invalid_price_coords", "Invalid price or coordinates")
-        
-        
-        # Basic validation
-        if not item_pk or not name:
-            return required_fields_message, 400
-        
-        try:
-            price = int(price)
-            lon = float(lon)
-            lat = float(lat)
-        except ValueError:
-            return invalid_values_message, 400
+        if not item_pk:
+            return getattr(languages, f"{lan}_item_id_required", "Item ID is required"), 400
             
         db, cursor = x.db()
-        
-        # First verify this item belongs to the current user
         q = "SELECT * FROM items WHERE item_pk = %s AND item_user_fk = %s"
         cursor.execute(q, (item_pk, user["user_pk"]))
         item = cursor.fetchone()
-
-        permission_denied_message = getattr(languages, f"{lan}_item_permission_denied", "Item not found or you don't have permission to edit it")
-        
         
         if not item:
-            return "Item not found or you don't have permission to edit it", 403
+            return permission_denied_message, 403
         
-        # Process new images if provided
-        new_image = item["item_image"]  # Default to current image
-        if 'files' in request.files and request.files['files'].filename:
-            images_names = x.validate_item_images()
-            if images_names:
-                new_image = images_names[0]  # Use the first new image as the main image
-                
-                # Add any new images to the images table
-                values = ""
-                for image_name in images_names:
-                    image_pk = uuid.uuid4().hex
-                    values = f"{values}('{image_pk}', '{item_pk}', '{image_name}'),"
-                
-                if values:
-                    values = values.rstrip(",")
-                    q = f"INSERT INTO images (image_pk, image_item_fk, image_name) VALUES {values}"
-                    cursor.execute(q)
+        validated_data = x.validate_edit_item_form()
         
-        # Add current timestamp for item_updated_at
+        name = validated_data["name"]
+        price = validated_data["price"]
+        lon = validated_data["lon"]
+        lat = validated_data["lat"]
+
+        new_image = item["item_image"]
+
+        # COULD NOT GET TO WORK - VALIDATION OF EDIT ITEM IMAGE...
+        # # Check if we have new images
+        # has_new_files = len(images_names) > 0
+        
+        # if has_new_files:
+        #     # Update main image to the first new image
+        #     new_image = images_names[0]
+                
+        #     # Add any new images to the images table
+        #     values = ""
+        #     for image_name in images_names:
+        #         image_pk = uuid.uuid4().hex
+        #         values = f"{values}('{image_pk}', '{item_pk}', '{image_name}'),"
+            
+        #     if values:
+        #         values = values.rstrip(",")
+        #         q = f"INSERT INTO images (image_pk, image_item_fk, image_name) VALUES {values}"
+        #         cursor.execute(q)
+        # else:
+        #     # Keep the current image if no new files
+        #     new_image = item["item_image"]
+        
         item_updated_at = int(time.time())
-        
-        # Update the item with new information including the update timestamp
         q = """UPDATE items 
-                SET item_name = %s, item_price = %s, item_lon = %s, item_lat =    %s, item_image = %s, item_updated_at = %s
+                SET item_name = %s, item_price = %s, item_lon = %s, item_lat = %s, 
+                    item_image = %s, item_updated_at = %s
                 WHERE item_pk = %s AND item_user_fk = %s"""
         
         cursor.execute(q, (name, price, lon, lat, new_image, item_updated_at, item_pk, user["user_pk"]))
-
-        update_failed_message = getattr(languages, f"{lan}_item_update_failed", "Failed to update item")
-        
         
         if cursor.rowcount != 1:
             raise Exception(update_failed_message)
@@ -526,7 +529,6 @@ def edit_item():
         db.commit()
 
         success_message = getattr(languages, f"{lan}_item_updated", "Item updated successfully!")
-        
         
         return f"""
             <mixhtml mix-redirect="/profile">
@@ -537,19 +539,40 @@ def edit_item():
     except Exception as ex:
         ic(ex)
         lan = get_language()
+        
+        if str(ex) == "company_ex item_name":
+            name_required = getattr(languages, f"{lan}_item_name_required", "Item name is required")
+            return f'<mixhtml mix-update="#edit-item-error">{name_required}</mixhtml>', 400
+
+        if "company_ex at least one file" in str(ex):
+            image_required = getattr(languages, f"{lan}_image_required", "At least one image is required")
+            return f'<mixhtml mix-update="#edit-item-error">{image_required}</mixhtml>', 400
+
+        if "company_ex max 5 files" in str(ex):
+            max_files_error = getattr(languages, f"{lan}_max_files_error", "Cannot upload more than 5 files")
+            return f'<mixhtml mix-update="#edit-item-error">{max_files_error}</mixhtml>', 400
 
         if "company_ex file extension not allowed" in str(ex):
-            extension_error = getattr(languages, f"{lan}_file_extension_invalid", "File extension not allowed")
-            return extension_error, 400
-        
+            invalid_extension_error = getattr(languages, f"{lan}_invalid_extension_error", "File extension not allowed")
+            return f'<mixhtml mix-update="#edit-item-error">{invalid_extension_error}</mixhtml>', 400
+
         if "company_ex file too large" in str(ex):
-            size_error = getattr(languages, f"{lan}_file_too_large", "File too large")
-            return size_error, 400
+            file_too_large_error = getattr(languages, f"{lan}_file_too_large_error", "File too large")
+            return f'<mixhtml mix-update="#edit-item-error">{file_too_large_error}</mixhtml>', 400
+
+        if "company_ex item_price" in str(ex):
+            invalid_values = getattr(languages, f"{lan}_invalid_price_coords", "Invalid price or coordinates")
+            return f'<mixhtml mix-update="#edit-item-error">{invalid_values}</mixhtml>', 400
+
+        if "company_ex item_coordinates" in str(ex):
+            invalid_values = getattr(languages, f"{lan}_invalid_price_coords", "Invalid price or coordinates")
+            return f'<mixhtml mix-update="#edit-item-error">{invalid_values}</mixhtml>', 400
             
         if "db" in locals():
             db.rollback()
             
-        return str(ex), 400
+        system_error = getattr(languages, f"{lan}_system_error", "System under maintenance")
+        return f'<mixhtml mix-update="#edit-item-error">{system_error}</mixhtml>', 400
     finally:
         if "cursor" in locals(): cursor.close()
         if "db" in locals(): db.close()

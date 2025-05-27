@@ -361,22 +361,6 @@ footer {
             margin-bottom: 0.5rem;
             color: var(--color-dark);
         }
-        
-        div {
-            margin: 0.25rem 0;
-            font-size: 1.1rem;
-            
-            &:nth-of-type(1) {
-                color: var(--color-dark);
-                font-weight: bold;
-            }
-            
-            &:nth-of-type(2) {
-                color: var(--color-gray-medium);
-                margin-bottom: 1rem;
-            }
-        }
-        
         /* Styling for the item actions (edit/delete buttons) */
         .item-actions {
             display: flex;
@@ -397,9 +381,177 @@ footer {
         }
     }
 }
+#item-name{
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: var(--color-dark);
+}
+.currency{
+    font-size: 1rem !important;
+   font-weight: 500 !important;
+    margin-bottom: 0.5rem;
+    color: var(--color-dark);
+}
+
+/* Edit Profile Styles */
+main#edit-profile {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: var(--background-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-default);
+}
+
+main#edit-profile h1 {
+    margin-bottom: 1.5rem;
+    color: var(--color-dark);
+    font-size: 1.8rem;
+    text-align: center;
+}
+
+main#edit-profile .error-message {
+    display: flex;
+    justify-content: center;
+    background-color: var(--color-error-light);
+    color: var(--color-error);
+    padding: 0.8rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
+main#edit-profile form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    margin: auto;
+}
+
+main#edit-profile .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+main#edit-profile .form-group label {
+    font-weight: 500;
+    color: var(--color-dark);
+    font-size: 1rem;
+}
+
+main#edit-profile .form-group input {
+    padding: 0.8rem;
+    border: 1px solid var(--color-gray-light);
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+}
+
+main#edit-profile .form-group input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
+}
+
+main#edit-profile .form-group input.input_error {
+    border-color: var(--color-error);
+    background-color: var(--color-error-light);
+}
+
+main#edit-profile .button-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+main#edit-profile .button-group button {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+main#edit-profile .button-group button:hover {
+    background-color: var(--color-primary-dark);
+}
+
+main#edit-profile .button-group .cancel-button {
+    padding: 0.8rem 1.5rem;
+    background-color: var(--color-gray-light);
+    color: var(--color-dark);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    text-decoration: none;
+    text-align: center;
+    transition: background-color 0.2s ease;
+    flex: 1;
+}
+
+main#edit-profile .button-group .cancel-button:hover {
+    background-color: var(--color-gray-medium);
+}
+
+
+
+
+.item-image-gallery {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.main-image {
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+.main-image img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 5px;
+}
+
+.thumbnail-images {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0.5rem 0;
+}
+
+.thumbnail {
+    width: 60px !important;
+    height: 60px !important;
+    object-fit: cover;
+    cursor: pointer;
+    border-radius: 3px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.thumbnail:hover, .thumbnail.active {
+    opacity: 1;
+    border: 2px solid var(--color-primary);
+}
 
 /* Responsive styling for small screens */
 @media (max-width: 768px) {
+    main#edit-profile {
+        padding: 1.5rem;
+        margin: 1rem;
+    }
+    
+    main#edit-profile .button-group {
+        flex-direction: column;
+    }
     #right {
         padding: 0.75rem;
         margin-bottom: 2rem;
